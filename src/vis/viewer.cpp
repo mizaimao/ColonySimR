@@ -13,55 +13,56 @@ using namespace::std;
 
 class Viewer {
     private:
+        // Helper variables.
         int frame_counter = 0;
         sf::Time zero_second = sf::seconds(0.0f);
         sf::Time render_time = sf::seconds(1.0f / TARGET_FPS);
         sf::Clock clock;
-
+        // Reusable components.
         sf::Font font;
         sf::Event event;
         sf::Texture frame_texture;
         sf::Sprite sprite;
-        Colony * colony = nullptr;
-        sf::Color color_map_arr[2];
         sf::Text fps_counter_text;
-
-
+        // Pointers.
+        Colony * colony = nullptr;
+        // Color settings.
+        sf::Color color_map_arr[2];
+        // Vertex array collection.
         map<string, sf::VertexArray> va_map;
 
+        int grid_line_count = COLONY_WIDTH + 1 + COLONY_HEIGHT + 1;
+        // Modified in constructor.
         int tile_width = 0;
         int tile_height = 0;
         int base_tile_x = 0;
         int base_tile_y = 0;
-        int grid_line_count = COLONY_WIDTH + 1 + COLONY_HEIGHT + 1;
 
     public:
         int width = WIDTH;
         int height = HEIGHT;
 
     Viewer(Colony * p_colony){
-        colony = p_colony;
-
+        // Setup drawing components.
         frame_texture.create(WIDTH, HEIGHT);
-        //va_map.insert(make_pair("dwd", sf::VertexArray()));
-        // va_map["background"] = (sf::VertexArray(sf::Triangles, 2 * 3));
+        // Setup pointers.
+        colony = p_colony;
+        // Setup vertex arrays.
         va_map["ground"] = (sf::VertexArray(sf::Triangles, 6 * 3));
         va_map["spores"] = (sf::VertexArray(sf::Triangles, 200 * 6 * 3));
         va_map["grid_lines"] = (sf::VertexArray(sf::Lines, grid_line_count * 4));
-
+        
         // Adjust color map.
         color_map_arr[0] = RED_SPORE;
         color_map_arr[1] = BLUE_SPORE;
 
+        // Initial drawing (background and grid lines).
         determine_base_tile_loc();
-        draw_static_ground();
-        draw_grid_lines();
-
-        draw_spore(0, 0, 0, BLUE_SPORE);
-        draw_spore(9, 9, 1, RED_SPORE);
-        draw_all_spores_from_colony();
+        draw_static_ground();  // Modifies va_map["ground"].
+        draw_grid_lines();  // Modifies va_map["grid_lines"].
     };
 
+    // 
     int modify_pixel_shader(
         int x,
         int y,
@@ -72,14 +73,10 @@ class Viewer {
         int y_offset = 0
     ){
         int tgt_index = (y * 256 + x) * 6;  // Two triangles, six vertices.
-        sf::Vertex* triangles = &target_va[tgt_index];
-        triangles[0].color = pixel_color;
-        triangles[1].color = pixel_color;
-        triangles[2].color = pixel_color;
-        triangles[3].color = pixel_color;
-        triangles[4].color = pixel_color;
-        triangles[5].color = pixel_color;
-
+        sf::Vertex * triangles = & target_va[tgt_index];
+        for (int i = 0; i < 6; i++){
+            triangles[i].color = pixel_color;
+        }
         triangles[0].position = sf::Vector2f( x * scale, y * scale) ;
         triangles[1].position = sf::Vector2f( x * scale, (y + 1) * scale );
         triangles[2].position = sf::Vector2f( (x + 1) * scale, y * scale );
@@ -89,6 +86,7 @@ class Viewer {
         return 0;
     }
 
+    // Calculate "reference" tile location, which is used to offset other tiles.
     int determine_base_tile_loc(){
         if (min(TILE_WIDTH, TILE_HEIGHT) == TILE_WIDTH){  // Bound by width.
             tile_width = TILE_WIDTH;
@@ -101,13 +99,14 @@ class Viewer {
         base_tile_y = Y_OFFSET;
         return 0;
     }
-
+    // Get a point location from array coordinates to mapped isometric coordinates.
     int get_tile_loc(int x, int y, float & mapped_x, float & mapped_y){
         mapped_x = (x - y) * tile_width / 2 + base_tile_x;
         mapped_y = (x + y) * tile_height / 2 + base_tile_y;
         return 0;
     }
 
+    // Static ground is made of three sides, and each side is made with two triangles.
     int draw_static_ground(){
         sf::VertexArray & bg_va = va_map.at("ground");
         for (int i = 0; i < 6; i ++)
@@ -125,20 +124,14 @@ class Viewer {
         get_tile_loc(COLONY_WIDTH, 0, right_x, right_y);
         get_tile_loc(0, 0, top_x, top_y);
         get_tile_loc(COLONY_WIDTH, COLONY_HEIGHT, bottom_x, bottom_y);
-
-        // cout << left_x << " " <<  left_y << endl;
-        // cout << right_x << " " <<  right_y << endl;
-        // cout << top_x << " " <<  top_y << endl;
-        // cout << bottom_x << " " <<  bottom_y << endl;
-        
+        // Above ground diamond shape.        
         bg_va[0].position = sf::Vector2f( left_x, left_y);
         bg_va[1].position = sf::Vector2f( top_x, top_y);
         bg_va[2].position = sf::Vector2f( bottom_x, bottom_y);
         bg_va[3].position = sf::Vector2f( bottom_x, bottom_y);
         bg_va[4].position = sf::Vector2f( right_x, right_y);
         bg_va[5].position = sf::Vector2f( top_x, top_y);
-
-        // Draw underground.
+        // Two underground sides.
         float under_height = UNDERGROUND_HEIGHT_REL * CENTRAL_TOTAL_HEIGHT;
         bg_va[6].position = sf::Vector2f( left_x, left_y);
         bg_va[7].position = sf::Vector2f( left_x, left_y + under_height );
@@ -157,6 +150,10 @@ class Viewer {
         return 0;
     }
 
+    /**
+     * Two segments for a grid line: above and under ground. Each grid line is drawn
+     * with two vertices.
+    */
     int draw_grid_lines(){
         sf::VertexArray & grid_line_va = va_map.at("grid_lines");
 
@@ -206,13 +203,9 @@ class Viewer {
         return 0;
     }
 
+    // Draw each spore by their locations from current colony.
     int draw_all_spores_from_colony(){
-
         for (auto & spore: colony->spore_man->spores_v){
-            // cout << "drawing spore with sex " << spore.sex 
-            //     << " loc x " << spore.loc_x 
-            //     << " loc y " << spore.loc_y
-            //     << " spore id " << spore.spore_id<< endl;
             int spore_index = spore.spore_id;
             sf::Color spore_color = color_map_arr[spore.sex];
             draw_spore(spore.loc_x, spore.loc_y, spore.spore_id, spore_color);
@@ -220,11 +213,12 @@ class Viewer {
         return 0;
     }
 
-
-
+    /**
+     * Draw a spore, which has three sides (totally 3 * 2 = 6 triangles).
+    */
     int draw_spore(int x, int y, int spore_index, sf::Color color){
         sf::VertexArray & spore_va = va_map.at("spores");
-        int spore_va_index = spore_index * 6 * 3;
+        int spore_va_index = spore_index * 6 * 3;  // Six vertices for two triangles.
 
         for (int i = 0; i < 6; i++)
             spore_va[spore_va_index + i].color = color;
@@ -267,6 +261,8 @@ class Viewer {
         return 0;
     }
 
+    // This is a very inaccurate way to calculate FPS. Because SF still runs as fast
+    // as it can, but it just doesn't update screen.
     void update_fps_calculation(){
         float frame_time = clock.getElapsedTime().asSeconds();
         float fps = 1.0f / frame_time;
@@ -277,8 +273,9 @@ class Viewer {
         
     }
     
-
+    // Entrypoint.
     int launch_window(){
+        // Create drawing window.
         sf::RenderWindow window(
             sf::VideoMode(WIDTH, HEIGHT),
             "Chicken Window",
@@ -286,7 +283,7 @@ class Viewer {
             sf::Style::Titlebar | sf::Style::Close
         );
         window.setFramerateLimit(TARGET_FPS);
-
+        // Setup fonts and text.
         if (!font.loadFromFile("Arial.ttf"))
             return EXIT_FAILURE;
         sf::Text text("Chicken text message\nBreakline", font, 20);
@@ -296,13 +293,13 @@ class Viewer {
         fps_counter_text.setCharacterSize(15);
         fps_counter_text.setPosition(WIDTH - 90, 0);
 
-        
+        // ??? May not be in use.
         sprite.setTexture(frame_texture);
         
-            // Start the game loop
-            while (window.isOpen())
-            {
+        // Start the game loop
+        while (window.isOpen()){
             sf::Time elapsed_time = clock.restart();
+            // Indefinitely update drawing (limited by TARGET_FPS).
             if (colony->is_realtime){
                 if (colony->residual_time > zero_second){
                     colony->residual_time -= elapsed_time;
@@ -312,11 +309,9 @@ class Viewer {
                     colony->step_colony();
                 }
             }
-
+            // Detect events.
             while (window.pollEvent(event))
             {
-
-
                 switch (event.type) {
                     // Close window: exit
                     case sf::Event::Closed:
@@ -330,17 +325,12 @@ class Viewer {
                                 colony->step_colony();
                                 break;
                             case sf::Keyboard::F:
-
-                                
                                 break;
                             case sf::Keyboard::R:
-                                
                                 break;
                             case sf::Keyboard::I:
-                                
                                 break;
                             case sf::Keyboard::N:
-                                
                                 break;
                             case sf::Keyboard::Space:
                                 colony->is_realtime = (not colony->is_realtime);
@@ -349,26 +339,17 @@ class Viewer {
                                 window.close();
                                 break;
                             case sf::Keyboard::Up:
-                                
                                 break;
                             case sf::Keyboard::Down:
-                                
                                 break;
-
                             case sf::Keyboard::Left:
-                                
                                 break;
-
                             case sf::Keyboard::Right:
-                                
                                 break;
-
                             default:
                                 break;
-
                         }
                         break;
-
                     default:
                         break;
                 }
@@ -384,15 +365,11 @@ class Viewer {
             // Draw spore locations;
             draw_all_spores_from_colony();
         
-
+            // Draw vertex arrays. Mind the order of them.
             window.draw(va_map.at("ground"));
             window.draw(va_map.at("grid_lines"));
             window.draw(va_map.at("spores"));
 
-            // Draw ppu as shader.
-            // draw_from_ppu_shader();
-            // window.draw(ppu_image_va);
-    
             update_fps_calculation();
             // Draw all strings.
             window.draw(text);
