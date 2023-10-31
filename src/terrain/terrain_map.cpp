@@ -3,6 +3,9 @@
 
 using namespace std;
 
+/**
+ * Controls background tiles.
+*/
 class BitMap{
     public:
         int width;
