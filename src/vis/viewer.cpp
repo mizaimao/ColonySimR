@@ -205,10 +205,19 @@ class Viewer {
 
     // Draw each spore by their locations from current colony.
     int draw_all_spores_from_colony(){
-        for (auto & spore: colony->spore_man->spores_v){
-            int spore_index = spore.spore_id;
-            sf::Color spore_color = color_map_arr[spore.sex];
-            draw_spore(spore.loc_x, spore.loc_y, spore.spore_id, spore_color);
+        int spore_vector_id = 0;
+        for (int y = 0; y < COLONY_HEIGHT; y++){
+            for (int x = 0; x < COLONY_WIDTH; x ++){
+                vector<Spore *> & location_vector = colony->spore_man->spore_by_loc[y][x];
+                //cout << "location vector size " << location_vector.size() << endl;
+                for (Spore * p_spore : location_vector){
+                    Spore & spore = * p_spore;
+                    int spore_index = spore.spore_id;
+                    sf::Color spore_color = color_map_arr[spore.sex];
+                    //draw_spore(spore.loc_x, spore.loc_y, spore.spore_id, spore_color);
+                    draw_spore(spore.loc_x, spore.loc_y, spore_vector_id++, spore_color);
+                }
+            }
         }
         return 0;
     }
@@ -219,6 +228,7 @@ class Viewer {
     int draw_spore(int x, int y, int spore_index, sf::Color color){
         sf::VertexArray & spore_va = va_map.at("spores");
         int spore_va_index = spore_index * 6 * 3;  // Six vertices for two triangles.
+        //cout << "drawing spore index " << spore_index << " offset "  << spore_va_index << endl;
 
         for (int i = 0; i < 6; i++)
             spore_va[spore_va_index + i].color = color;
