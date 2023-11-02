@@ -4,6 +4,7 @@
 // Colony.
 const int COLONY_WIDTH = 20;
 const int COLONY_HEIGHT = 20;
+const int INITIAL_SPORE_COUNT = 10;
 
 // Viewer.
 const float TARGET_FPS = 30.0f;

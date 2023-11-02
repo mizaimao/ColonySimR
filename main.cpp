@@ -6,7 +6,7 @@
 int main(){
 
     BitMap init_bitmap(COLONY_WIDTH, COLONY_HEIGHT);
-    SporeManager init_spore_man(10, &init_bitmap);
+    SporeManager init_spore_man(INITIAL_SPORE_COUNT, &init_bitmap);
 
     std::cout << "Chicken" << std::endl;
 

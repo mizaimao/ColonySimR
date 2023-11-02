@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "src/terrain/terrain_map.cpp"
+#include "config.h"
 
 using namespace::std;
 
@@ -17,6 +18,7 @@ class Spore {
         float health;
         int loc_x;
         int loc_y;
+        bool moved = false;  // Indicates if this spore has moved (for drawing).
         vector< array<int, 3> > route;
 
         Spore(int i_sex, int i_spore_id, int i_loc_x, int i_loc_y, float f_health = 100.0f, int i_age = 0){
@@ -37,6 +39,8 @@ class SporeManager {
         int current_spore_id = 0;
         int current_population = 0;
         BitMap * bitmap = nullptr;
+
+        vector<Spore *> spore_by_loc[COLONY_HEIGHT][COLONY_WIDTH];
 
         SporeManager(
             int initial_pop, BitMap * r_bitmap, int pop_cap = 200, int seed = 720
@@ -68,7 +72,14 @@ class SporeManager {
             if (spore_loc_x == -1 or spore_loc_y == -1)
                 get_random_loc(spore_loc_x, spore_loc_y);
 
-            spores_v.push_back(Spore(spore_sex, spore_id, spore_loc_x, spore_loc_y, spore_health, spore_age));
+            vector<Spore *> & location_vector = spore_by_loc[spore_loc_y][spore_loc_x];
+            while (location_vector.size() > 0){  // Keep looking until an unoccupied location is found.
+                get_random_loc(spore_loc_x, spore_loc_y);
+            }
+            Spore * new_spore = new Spore(spore_sex, spore_id, spore_loc_x, spore_loc_y, spore_health, spore_age);
+            location_vector.push_back( new_spore );
+
+            //cout << "created a spore with id " << location_vector.end().spore << endl;
             current_population++;
             return 0;
         }
@@ -112,8 +123,47 @@ class SporeManager {
 
         // Move all spores.
         int step_spores(){
-            for (auto & spore : spores_v){
-                spore_move(spore.loc_x, spore.loc_y);
+
+            // Go through by tiles.
+            for (int xx = 0; xx < COLONY_WIDTH; xx++){
+                for (int yy = 0; yy < COLONY_HEIGHT; yy++){
+                    vector<Spore *> & location_vector = spore_by_loc[yy][xx];
+                    // Log their original location
+                    int i = location_vector.size() - 1;
+                    for (
+                        auto it = location_vector.end(); it != location_vector.begin(); it--, i--){
+                    // for (Spore * p_spore : location_vector){
+                        Spore * p_spore = location_vector[i];
+                        Spore & spore = * p_spore;
+
+                        if (spore.moved){
+                            continue;
+                        }
+                        spore_move(spore.loc_x, spore.loc_y);
+                        spore.moved = true;
+                        
+                        if ((spore.loc_x != xx) or (spore.loc_y != yy)){  // The spore has moved location.
+                            vector<Spore *> & new_location_vector = spore_by_loc[spore.loc_y][spore.loc_x];
+                            new_location_vector.push_back(p_spore);
+                            location_vector.erase(location_vector.begin() + i);                            
+                        }
+                        else{
+                        }
+                    }
+                }
+            }
+
+            for (int xx = 0; xx < COLONY_WIDTH; xx++){
+                for (int yy = 0; yy < COLONY_HEIGHT; yy++){
+                    vector<Spore *> & location_vector = spore_by_loc[yy][xx];
+                    // Log their original location
+                    vector<Spore *> new_current_location_vector;
+                    
+                    for (Spore * p_spore : location_vector){
+                        Spore & spore = * p_spore;
+                        spore.moved = false;
+                    }
+                }
             }
             return 0;
         }
