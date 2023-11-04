@@ -49,8 +49,9 @@ class Viewer {
         colony = p_colony;
         // Setup vertex arrays.
         va_map["ground"] = (sf::VertexArray(sf::Triangles, 6 * 3));
-        va_map["spores"] = (sf::VertexArray(sf::Triangles, 200 * 6 * 3));
+        va_map["spores"] = (sf::VertexArray(sf::Triangles, POPULATION_CAP * 6 * 3));
         va_map["grid_lines"] = (sf::VertexArray(sf::Lines, grid_line_count * 4));
+        va_map["spore_outline"] = (sf::VertexArray(sf::Lines, 9 * 2));
         
         // Adjust color map.
         color_map_arr[0] = RED_SPORE;
@@ -60,6 +61,8 @@ class Viewer {
         determine_base_tile_loc();
         draw_static_ground();  // Modifies va_map["ground"].
         draw_grid_lines();  // Modifies va_map["grid_lines"].
+
+        draw_spore_outline(0, 0, SPORE_OUTLINE_COLOR);
     };
 
     // 
@@ -124,28 +127,29 @@ class Viewer {
         get_tile_loc(COLONY_WIDTH, 0, right_x, right_y);
         get_tile_loc(0, 0, top_x, top_y);
         get_tile_loc(COLONY_WIDTH, COLONY_HEIGHT, bottom_x, bottom_y);
+        int i = 0;
         // Above ground diamond shape.        
-        bg_va[0].position = sf::Vector2f( left_x, left_y);
-        bg_va[1].position = sf::Vector2f( top_x, top_y);
-        bg_va[2].position = sf::Vector2f( bottom_x, bottom_y);
-        bg_va[3].position = sf::Vector2f( bottom_x, bottom_y);
-        bg_va[4].position = sf::Vector2f( right_x, right_y);
-        bg_va[5].position = sf::Vector2f( top_x, top_y);
+        bg_va[ i++ ].position = sf::Vector2f( left_x, left_y);
+        bg_va[ i++ ].position = sf::Vector2f( top_x, top_y);
+        bg_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y);
+        bg_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y);
+        bg_va[ i++ ].position = sf::Vector2f( right_x, right_y);
+        bg_va[ i++ ].position = sf::Vector2f( top_x, top_y);
         // Two underground sides.
         float under_height = UNDERGROUND_HEIGHT_REL * CENTRAL_TOTAL_HEIGHT;
-        bg_va[6].position = sf::Vector2f( left_x, left_y);
-        bg_va[7].position = sf::Vector2f( left_x, left_y + under_height );
-        bg_va[8].position = sf::Vector2f( bottom_x, bottom_y);
-        bg_va[9].position = sf::Vector2f( bottom_x, bottom_y);
-        bg_va[10].position = sf::Vector2f( bottom_x, bottom_y + under_height );
-        bg_va[11].position = sf::Vector2f( left_x, left_y + under_height);
+        bg_va[ i++ ].position = sf::Vector2f( left_x, left_y);
+        bg_va[ i++ ].position = sf::Vector2f( left_x, left_y + under_height );
+        bg_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y);
+        bg_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y);
+        bg_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y + under_height );
+        bg_va[ i++ ].position = sf::Vector2f( left_x, left_y + under_height);
 
-        bg_va[12].position = sf::Vector2f( bottom_x, bottom_y);
-        bg_va[13].position = sf::Vector2f( bottom_x, bottom_y + under_height );
-        bg_va[14].position = sf::Vector2f( right_x, right_y);
-        bg_va[15].position = sf::Vector2f( right_x, right_y);
-        bg_va[16].position = sf::Vector2f( right_x, right_y + under_height );
-        bg_va[17].position = sf::Vector2f( bottom_x, bottom_y + under_height);
+        bg_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y);
+        bg_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y + under_height );
+        bg_va[ i++ ].position = sf::Vector2f( right_x, right_y);
+        bg_va[ i++ ].position = sf::Vector2f( right_x, right_y);
+        bg_va[ i++ ].position = sf::Vector2f( right_x, right_y + under_height );
+        bg_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y + under_height);
 
         return 0;
     }
@@ -238,6 +242,46 @@ class Viewer {
         return 0;
     }
 
+    // Draw outline of a spore.
+    int draw_spore_outline(int x, int y, sf::Color color){
+
+        sf::VertexArray & outline_va = va_map.at("spore_outline");
+        for (int i = 0; i < 9 * 2; i++)
+            outline_va[i].color = color;
+
+        float left_x, left_y;
+        float right_x, right_y;
+        float top_x, top_y;
+        float bottom_x, bottom_y;
+        float spore_height = SPORE_HEIGHT_REL * tile_height;
+        get_tile_loc(x, y + 1, left_x, left_y);
+        get_tile_loc(x + 1, y, right_x, right_y);
+        get_tile_loc(x, y, top_x, top_y);
+        get_tile_loc(x + 1, y + 1, bottom_x, bottom_y);
+        int i = 0;
+        // Four surface lines.
+        outline_va[ i++ ].position = sf::Vector2f( top_x, top_y - spore_height );
+        outline_va[ i++ ].position = sf::Vector2f( left_x, left_y - spore_height );
+        outline_va[ i++ ].position = sf::Vector2f( left_x, left_y - spore_height );
+        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height );
+        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height );
+        outline_va[ i++ ].position = sf::Vector2f( right_x, right_y - spore_height );
+        outline_va[ i++ ].position = sf::Vector2f( right_x, right_y - spore_height );
+        outline_va[ i++ ].position = sf::Vector2f( top_x, top_y - spore_height );
+        // Three side lines);
+        outline_va[ i++ ].position = sf::Vector2f( left_x, left_y - spore_height );
+        outline_va[ i++ ].position = sf::Vector2f( left_x, left_y );
+        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height );
+        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y );
+        outline_va[ i++ ].position = sf::Vector2f( right_x, right_y - spore_height );
+        outline_va[ i++ ].position = sf::Vector2f( right_x, right_y );
+        // Two bottom lines);
+        outline_va[ i++ ].position = sf::Vector2f( left_x, left_y );
+        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y );
+        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y );
+        outline_va[ i++ ].position = sf::Vector2f( right_x, right_y );
+    }
+
     /**
      * Draw a spore, which has three sides (totally 3 * 2 = 6 triangles).
     */
@@ -262,27 +306,28 @@ class Viewer {
         get_tile_loc(x + 1, y, right_x, right_y);
         get_tile_loc(x, y, top_x, top_y);
         get_tile_loc(x + 1, y + 1, bottom_x, bottom_y);
+        int i = 0;
 
-        spore_va[ spore_va_index + 0 ].position = sf::Vector2f( left_x, left_y - spore_height);
-        spore_va[ spore_va_index + 1 ].position = sf::Vector2f( top_x, top_y - spore_height);
-        spore_va[ spore_va_index + 2 ].position = sf::Vector2f( bottom_x, bottom_y - spore_height);
-        spore_va[ spore_va_index + 3 ].position = sf::Vector2f( bottom_x, bottom_y - spore_height);
-        spore_va[ spore_va_index + 4 ].position = sf::Vector2f( right_x, right_y - spore_height);
-        spore_va[ spore_va_index + 5 ].position = sf::Vector2f( top_x, top_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( left_x, left_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( top_x, top_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( right_x, right_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( top_x, top_y - spore_height);
 
-        spore_va[ spore_va_index + 6].position = sf::Vector2f( left_x, left_y - spore_height);
-        spore_va[ spore_va_index + 7].position = sf::Vector2f( left_x, left_y);
-        spore_va[ spore_va_index + 8].position = sf::Vector2f( bottom_x, bottom_y - spore_height);
-        spore_va[ spore_va_index + 9].position = sf::Vector2f( bottom_x, bottom_y - spore_height);
-        spore_va[ spore_va_index + 10].position = sf::Vector2f( bottom_x, bottom_y );
-        spore_va[ spore_va_index + 11].position = sf::Vector2f( left_x, left_y);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( left_x, left_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( left_x, left_y);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( bottom_x, bottom_y );
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( left_x, left_y);
 
-        spore_va[ spore_va_index + 12].position = sf::Vector2f( bottom_x, bottom_y - spore_height);
-        spore_va[ spore_va_index + 13].position = sf::Vector2f( bottom_x, bottom_y );
-        spore_va[ spore_va_index + 14].position = sf::Vector2f( right_x, right_y - spore_height);
-        spore_va[ spore_va_index + 15].position = sf::Vector2f( right_x, right_y - spore_height);
-        spore_va[ spore_va_index + 16].position = sf::Vector2f( right_x, right_y );
-        spore_va[ spore_va_index + 17].position = sf::Vector2f( bottom_x, bottom_y );
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( bottom_x, bottom_y );
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( right_x, right_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( right_x, right_y - spore_height);
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( right_x, right_y );
+        spore_va[ spore_va_index + i++ ].position = sf::Vector2f( bottom_x, bottom_y );
 
         return 0;
     }
@@ -396,6 +441,7 @@ class Viewer {
             window.draw(va_map.at("ground"));
             window.draw(va_map.at("grid_lines"));
             window.draw(va_map.at("spores"));
+            window.draw(va_map.at("spore_outline"));
 
             update_fps_calculation();
             // Draw all strings.
