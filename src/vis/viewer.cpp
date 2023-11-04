@@ -256,7 +256,7 @@ class Viewer {
         int mapped_x = -1;
         int mapped_y = -1;
         convert_to_isometric_coor(mouse_loc.x, mouse_loc.y, mapped_x, mapped_y);
-        draw_spore_outline(mapped_x, mapped_y, SPORE_OUTLINE_COLOR);
+        draw_spore_outline(mapped_x, mapped_y, SPORE_SELECTED_OUTLINE_COLOR);
     }
 
     // Draw outline of a spore.
