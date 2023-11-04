@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <random>
 #include <SFML/Graphics.hpp>
 
 #include "src/terrain/terrain_map.cpp"

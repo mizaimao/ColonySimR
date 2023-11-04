@@ -1,10 +1,14 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 
+// Randomness.
+const int MASTER_SEED = 720;
+
 // Colony.
 const int COLONY_WIDTH = 20;
 const int COLONY_HEIGHT = 20;
 const int INITIAL_SPORE_COUNT = 10;
+const int POPULATION_CAP = 200;
 
 // Viewer.
 const float TARGET_FPS = 30.0f;

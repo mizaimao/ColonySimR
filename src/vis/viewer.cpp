@@ -336,7 +336,8 @@ class Viewer {
                                 break;
                             case sf::Keyboard::F:
                                 break;
-                            case sf::Keyboard::R:
+                            case sf::Keyboard::A:
+                                colony->spore_man->create_a_spore();
                                 break;
                             case sf::Keyboard::I:
                                 break;
