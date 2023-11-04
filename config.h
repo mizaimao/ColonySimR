@@ -34,6 +34,7 @@ const int Y_OFFSET = CENTRAL_PADDING_Y;
 // Viewer aesthetics.
 const sf::Color GRID_COLOR(100, 110, 110);
 const sf::Color BG_COLOR(103, 193, 202);
+const sf::Color SPORE_OUTLINE_COLOR(255, 255, 255);
 const sf::Color GROUND_COLOR(141, 191, 57);
 const sf::Color UNDERGROUND_COLOR(155, 118, 83);
 const sf::Color UNDERGROUND_LEFT_COLOR_MODIFIER(20, 20, 20, 0);
