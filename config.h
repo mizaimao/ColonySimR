@@ -5,8 +5,8 @@
 const int MASTER_SEED = 720;
 
 // Colony.
-const int COLONY_WIDTH = 30;
-const int COLONY_HEIGHT = 30;
+const int COLONY_WIDTH = 20;
+const int COLONY_HEIGHT = 20;
 const int INITIAL_SPORE_COUNT = 200;
 const int POPULATION_CAP = 200;
 
@@ -15,6 +15,7 @@ const float TARGET_FPS = 30.0f;
 const int WIDTH = 1280;
 const int HEIGHT = 800;
 const bool SHOW_TILE_GRIDLINES = true;
+const bool SHOW_SPORE_OUTLINE = true;
 
 // Viewer offsets.
 const int LOWER_PANE_HEIGHT = 200;
@@ -32,9 +33,10 @@ const int X_OFFSET = LEFT_PANE_WIDTH + CENTRAL_TOTAL_WIDTH;
 const int Y_OFFSET = CENTRAL_PADDING_Y;
 
 // Viewer aesthetics.
-const sf::Color GRID_COLOR(100, 110, 110);
+const sf::Color GRID_COLOR(150, 150, 150);
 const sf::Color BG_COLOR(103, 193, 202);
-const sf::Color SPORE_OUTLINE_COLOR(255, 255, 255);
+const sf::Color SPORE_OUTLINE_COLOR(120, 120, 120);
+const sf::Color SPORE_SELECTED_OUTLINE_COLOR(255, 255, 255);
 const sf::Color GROUND_COLOR(141, 191, 57);
 const sf::Color UNDERGROUND_COLOR(155, 118, 83);
 const sf::Color UNDERGROUND_LEFT_COLOR_MODIFIER(20, 20, 20, 0);
