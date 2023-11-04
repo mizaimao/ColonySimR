@@ -15,7 +15,7 @@ const float TARGET_FPS = 30.0f;
 const int WIDTH = 1280;
 const int HEIGHT = 800;
 const bool SHOW_TILE_GRIDLINES = true;
-const bool SHOW_SPORE_OUTLINE = true;
+const bool SHOW_SPORE_OUTLINE = false;
 
 // Viewer offsets.
 const int LOWER_PANE_HEIGHT = 200;
