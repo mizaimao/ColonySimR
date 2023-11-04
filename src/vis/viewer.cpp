@@ -155,6 +155,10 @@ class Viewer {
      * with two vertices.
     */
     int draw_grid_lines(){
+        if (not SHOW_TILE_GRIDLINES){
+            return 0;
+        }
+
         sf::VertexArray & grid_line_va = va_map.at("grid_lines");
 
         for (int i = 0; i < grid_line_count * 4; i++){

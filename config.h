@@ -5,15 +5,16 @@
 const int MASTER_SEED = 720;
 
 // Colony.
-const int COLONY_WIDTH = 20;
-const int COLONY_HEIGHT = 20;
-const int INITIAL_SPORE_COUNT = 10;
+const int COLONY_WIDTH = 30;
+const int COLONY_HEIGHT = 30;
+const int INITIAL_SPORE_COUNT = 200;
 const int POPULATION_CAP = 200;
 
 // Viewer.
 const float TARGET_FPS = 30.0f;
 const int WIDTH = 1280;
 const int HEIGHT = 800;
+const bool SHOW_TILE_GRIDLINES = true;
 
 // Viewer offsets.
 const int LOWER_PANE_HEIGHT = 200;
@@ -31,7 +32,7 @@ const int X_OFFSET = LEFT_PANE_WIDTH + CENTRAL_TOTAL_WIDTH;
 const int Y_OFFSET = CENTRAL_PADDING_Y;
 
 // Viewer aesthetics.
-const sf::Color GRID_COLOR(110, 110, 110);
+const sf::Color GRID_COLOR(100, 110, 110);
 const sf::Color BG_COLOR(103, 193, 202);
 const sf::Color GROUND_COLOR(141, 191, 57);
 const sf::Color UNDERGROUND_COLOR(155, 118, 83);
@@ -45,4 +46,23 @@ const sf::Color SPORE_RIGHT_COLOR_MODIFIER(20, 20, 20, 0);
 const sf::Color BLUE_SPORE(66, 158, 245);
 const sf::Color RED_SPORE(250, 95, 95);
 
+// Spore events.
+const int SPORE_REPRODUCTION_PCT = 10;  // How likely spores reproduce when encountered (requires opposite sexes).
+const int SPORE_REPRODUCTION_AGE_LOW = 0;  // At least how old a spore can reproduce.
+const int SPORE_REPRODUCTION_AGE_HIGH = 50;  // At most how old a spore can reproduce.
+const int SPORE_REPRODUCTION_HEALTH_REQ = 90;  // At least how healthy a spore can reproduce.
+const int SPORE_REPRODUCTION_MOOD_REQ = 80;  // At least how happy a spore can reproduce.
+const int SPORE_REPRODUCTION_CONCEIVE_RATE = 50;  // If a reproduction is triggered, this is the chance of getting a new spore.
 
+const int SPORE_FIGHT_PCT = 1;  // Chances of starting a fight (requires two males).
+const int SPORE_FIGHT_DAMAGE_IMPACT_MAX = 10;  // If a fight is triggered, max damage to either sides.
+const int SPORE_FIGHT_FATAL_PCT = 10;  // Fatal fight.
+
+const int SPORE_CHAT_CHANCE = 89;  // Two spores start a chat when on the same tile.
+const int SPORE_CHAT_HAPPINESS_CHANCE = 40;  // How likely to get a happy conversation, boosting happiness.
+const int SPORE_CHAT_NEUTRAL_CHANCE = 30;
+const int SPORE_CHAT_NEGATIVE_CHANCE = 30;
+const int SPORE_CHAT_MOOD_IMPACT_MAX = 10;  // Randomly pick a number between 0 and this to affect happiness when a spore chats.
+
+const float SPORE_MOOD_RECOVER_PER_TURN = 1.0f;
+const float SPORE_HEALTH_RECOVER_PER_TURN = 1.0f;

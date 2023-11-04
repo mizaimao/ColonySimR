@@ -1,10 +1,12 @@
 #pragma once
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <random>
 #include <map>
 
 #include "src/terrain/terrain_map.cpp"
+#include "utils.cpp"
 #include "config.h"
 
 using namespace::std;
@@ -16,12 +18,13 @@ class Spore {
         int age;
         int spore_id;
         float health;
+        float mood;
         int loc_x;
         int loc_y;
         bool moved = false;  // Indicates if this spore has moved (for drawing).
         vector< array<int, 3> > route;
 
-        Spore(int i_sex, int i_spore_id, int i_loc_x, int i_loc_y, float f_health = 100.0f, int i_age = 0){
+        Spore(int i_sex, int i_spore_id, int i_loc_x, int i_loc_y, float f_health = 100.0f, int i_age = 0, int f_mood = 100.0f){
             sex = i_sex;
             spore_id = i_spore_id;
             age = i_age;
@@ -29,6 +32,7 @@ class Spore {
             loc_y = i_loc_y;
             health = f_health;
             age = i_age;
+            mood = f_mood;
         };
 };
 
@@ -78,9 +82,6 @@ class SporeManager {
                 get_random_loc(spore_loc_x, spore_loc_y);
 
             vector<Spore *> & location_vector = spore_by_loc[spore_loc_y][spore_loc_x];
-            // while (location_vector.size() > 0){  // Keep looking until an unoccupied location is found.
-            //     get_random_loc(spore_loc_x, spore_loc_y);
-            // }
             Spore * new_spore = new Spore(spore_sex, spore_id, spore_loc_x, spore_loc_y, spore_health, spore_age);
             location_vector.push_back( new_spore );
 
@@ -125,25 +126,111 @@ class SporeManager {
                     break;
             };
         }
+        
+        // Remove a spore. For whatever reason we delist this spore from our humble colony.
+        int remove_spore(){
+            return 1;
+        }
+
+        // Check if a spore is reproduction-ready.
+        bool reproduction_check(Spore & spore){
+            bool reproducible = true;
+            if (SPORE_REPRODUCTION_AGE_LOW > spore.age or spore.age > SPORE_REPRODUCTION_AGE_HIGH){
+                reproducible = false;
+            }
+            if (spore.health < SPORE_REPRODUCTION_HEALTH_REQ){
+                reproducible = false;
+            }
+            if (spore.mood < SPORE_REPRODUCTION_MOOD_REQ){
+                reproducible = false;
+            }
+            return reproducible;
+        }
+
+        // Determines outcome of a spore fight for one side. Need to call twice to cover both sides.
+        // Death is not handled here but in the step function.
+        void spore_fight_impact(Spore & spore){
+            if ((rng() % 100) < SPORE_FIGHT_FATAL_PCT){  // Fatal fight.
+                spore.health = 0.0f;
+            } else {
+                spore.health -= rng() % SPORE_FIGHT_DAMAGE_IMPACT_MAX;
+            }
+        }
+
+        // Determines outcome of a spore conversation.
+        void spore_chat_impact(Spore & spore){
+            int roll = rng() % 100;
+            if (roll < SPORE_CHAT_HAPPINESS_CHANCE){
+                spore.mood = min(100.0f, spore.mood + rng() % SPORE_CHAT_MOOD_IMPACT_MAX);
+            } else if (SPORE_CHAT_HAPPINESS_CHANCE <= roll and roll <= SPORE_CHAT_HAPPINESS_CHANCE + SPORE_CHAT_NEUTRAL_CHANCE){
+                // Nothing happens due to a neutral conversation.
+            } else {
+                spore.mood = max(0.0f, spore.mood - rng() % SPORE_CHAT_MOOD_IMPACT_MAX);
+            }
+        }
+
         // Some interaction may occur among spores on the same tile.
         int spore_interaction_on_the_same_tile(
             vector<Spore *> & location_vector,  // Tile vector.
             int n_interactions = 1  // How many interactions to generate.
         ){
             int spore_count = location_vector.size();
+            if (spore_count < 2) {  // Too few spores to make an interaction.
+                return 0;
+            }
             for (int i_interaction = 0; i_interaction < n_interactions; i_interaction++){
+                int first_spore_i = rng() % spore_count;
+                int second_spore_i = rng() % spore_count;
+                if (first_spore_i == second_spore_i){
+                    continue;
+                }
+                Spore & first_spore = * location_vector[first_spore_i];
+                Spore & second_spore = * location_vector[second_spore_i];
+
+                // Decide an event.
+                int event_roll = rng() % 100;
+                int accumulator = SPORE_REPRODUCTION_PCT;
+
+                // Reproduction event.
+                if (0 <= event_roll and event_roll < SPORE_REPRODUCTION_PCT){
+                    // Opposite sex.
+                    if (first_spore.sex + second_spore.sex == 1 and reproduction_check(first_spore) and reproduction_check(second_spore)){
+                        // Now roll a die to decide if a new spore can be created.
+                        if ((rng() % 100) < SPORE_REPRODUCTION_CONCEIVE_RATE){
+                            if (create_a_spore()){
+                                //print("No new spore created due to pop cap.");
+                            }
+                        }
+                    }
+                // Fight event.
+                } else if (SPORE_REPRODUCTION_PCT <= event_roll and event_roll <= SPORE_REPRODUCTION_PCT + SPORE_FIGHT_PCT){
+                    // Both are males.
+                    if (first_spore.sex + second_spore.sex == 2){
+                        spore_fight_impact(first_spore);
+                        spore_fight_impact(second_spore);
+                    }
+                // Chat event.
+                } else if (SPORE_REPRODUCTION_PCT + SPORE_FIGHT_PCT <= event_roll and event_roll < 100){
+                    spore_chat_impact(first_spore);
+                    spore_chat_impact(second_spore);
+                } else {
+                    // Place holder for future events.
+                }
 
             }
-
+            return 0;
         }
 
         // Move all spores.
         int step_spores(){
-
             // Go through by tiles.
             for (int xx = 0; xx < COLONY_WIDTH; xx++){
                 for (int yy = 0; yy < COLONY_HEIGHT; yy++){
                     vector<Spore *> & location_vector = spore_by_loc[yy][xx];
+                    
+                    // Trigger spore interactions on that tile.
+                    spore_interaction_on_the_same_tile(location_vector);
+
                     // Log their original location
                     int i = location_vector.size() - 1;
                     for (
