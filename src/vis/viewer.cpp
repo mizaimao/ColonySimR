@@ -158,7 +158,6 @@ class Viewer {
         if (not SHOW_TILE_GRIDLINES){
             return 0;
         }
-
         sf::VertexArray & grid_line_va = va_map.at("grid_lines");
 
         for (int i = 0; i < grid_line_count * 4; i++){
@@ -206,6 +205,17 @@ class Viewer {
         }
         return 0;
     }
+    // Clear dead spore vertices to prevent them being drawn.
+    void clear_spore_va_from_deceased(int count){
+        if (count <= 0){
+            return;
+        }
+        sf::VertexArray & spore_va = va_map.at("spores");
+        int offset = spore_va.getVertexCount() - count * 18;  // Magic number 18 = 3sides x 2triangles x 3vertices.
+        for (int i = offset; i < spore_va.getVertexCount(); i++){
+            spore_va[i].position = sf::Vector2f( 0.0f, 0.0f);
+        }
+    }
 
     // Draw each spore by their locations from current colony.
     int draw_all_spores_from_colony(){
@@ -223,6 +233,8 @@ class Viewer {
                 }
             }
         }
+        clear_spore_va_from_deceased(POPULATION_CAP - spore_vector_id);
+
         return 0;
     }
 
