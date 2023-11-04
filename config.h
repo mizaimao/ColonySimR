@@ -47,6 +47,8 @@ const sf::Color BLUE_SPORE(66, 158, 245);
 const sf::Color RED_SPORE(250, 95, 95);
 
 // Spore events.
+const int SPORE_AGE_CAP = -1;  // Spores elder than this age will be killed (is it how it works now?).
+
 const int SPORE_REPRODUCTION_PCT = 10;  // How likely spores reproduce when encountered (requires opposite sexes).
 const int SPORE_REPRODUCTION_AGE_LOW = 0;  // At least how old a spore can reproduce.
 const int SPORE_REPRODUCTION_AGE_HIGH = 50;  // At most how old a spore can reproduce.

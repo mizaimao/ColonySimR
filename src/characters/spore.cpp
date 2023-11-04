@@ -61,7 +61,7 @@ class SporeManager {
             int i_sex = -1, int i_spore_id = -1, int i_loc_x = -1, int i_loc_y = -1,
             float f_health = 100.0f, int i_age = 0
         ){
-            if (current_population == POPULATION_CAP)
+            if (current_population >= POPULATION_CAP)
                 return 1;
 
             int spore_sex = i_sex;
@@ -198,7 +198,9 @@ class SporeManager {
                         // Now roll a die to decide if a new spore can be created.
                         if ((rng() % 100) < SPORE_REPRODUCTION_CONCEIVE_RATE){
                             if (create_a_spore()){
-                                //print("No new spore created due to pop cap.");
+                                print("No new spore created due to pop cap.");
+                            } else {
+                                print("New spore created: ", current_spore_id);
                             }
                         }
                     }
@@ -219,6 +221,24 @@ class SporeManager {
 
             }
             return 0;
+        }
+
+        /**
+         * Called for each spore per turn. Checks if it still survives and update its mood and health.
+         * Returns 1 if it should be dead.
+        */
+        bool update_spore_status(Spore & spore){
+            if (spore.age++ > SPORE_AGE_CAP and SPORE_AGE_CAP > 0){
+                print("Spore ", spore.spore_id, " got killed due to aging.");
+                return true;
+            }
+            if (spore.health <= 0.0f){
+                print("Spore ", spore.spore_id, " got killed due to low health.");
+                return true;
+            }
+            spore.health = min(100.0f, spore.health + SPORE_HEALTH_RECOVER_PER_TURN);
+            spore.mood = min(100.0f, spore.mood + SPORE_MOOD_RECOVER_PER_TURN);
+            return false;
         }
 
         // Move all spores.
@@ -242,6 +262,13 @@ class SporeManager {
                         if (spore.moved){
                             continue;
                         }
+                        if (update_spore_status(spore)){  // Returns 1 if a spore should be dead.
+                            location_vector.erase(location_vector.begin() + i);  // Remove this spore from vector.
+                            delete p_spore;
+                            current_population--;
+                            continue;
+                        }
+
                         spore_move(spore.loc_x, spore.loc_y);
                         spore.moved = true;
 
