@@ -22,7 +22,7 @@ class Spore {
         int loc_x;
         int loc_y;
         bool moved = false;  // Indicates if this spore has moved (for drawing).
-        vector< array<int, 3> > route;
+        //vector< array<int, 3> > route;
 
         Spore(int i_sex, int i_spore_id, int i_loc_x, int i_loc_y, float f_health = 100.0f, int i_age = 0, int f_mood = 100.0f){
             sex = i_sex;
