@@ -23,6 +23,7 @@ class Viewer {
         sf::Event event;
         sf::Texture frame_texture;
         sf::Sprite sprite;
+        sf::Sprite spore_info_pane;
         sf::Text fps_counter_text;
         // Pointers.
         Colony * colony = nullptr;
@@ -51,8 +52,9 @@ class Viewer {
         va_map["ground"] = (sf::VertexArray(sf::Triangles, 6 * 3));
         va_map["spores"] = (sf::VertexArray(sf::Triangles, POPULATION_CAP * 6 * 3));
         va_map["grid_lines"] = (sf::VertexArray(sf::Lines, grid_line_count * 4));
-        va_map["spore_outline"] = (sf::VertexArray(sf::Lines, 9 * 2));
-        
+        va_map["spore_outline"] = (sf::VertexArray(sf::Lines, POPULATION_CAP * 9 * 2));
+        va_map["spore_outline_single"] = (sf::VertexArray(sf::Lines, 9 * 2));
+
         // Adjust color map.
         color_map_arr[0] = RED_SPORE;
         color_map_arr[1] = BLUE_SPORE;
@@ -61,8 +63,6 @@ class Viewer {
         determine_base_tile_loc();
         draw_static_ground();  // Modifies va_map["ground"].
         draw_grid_lines();  // Modifies va_map["grid_lines"].
-
-        draw_spore_outline(0, 0, SPORE_OUTLINE_COLOR);
     };
 
     // 
@@ -223,16 +223,23 @@ class Viewer {
         if (count <= 0){
             return;
         }
+        // Both of spore and outline have 18 vertices per spore.
         sf::VertexArray & spore_va = va_map.at("spores");
+        sf::VertexArray & spore_outline_va = va_map.at("spore_outline");
+
         int offset = spore_va.getVertexCount() - count * 18;  // Magic number 18 = 3sides x 2triangles x 3vertices.
         for (int i = offset; i < spore_va.getVertexCount(); i++){
             spore_va[i].position = sf::Vector2f( 0.0f, 0.0f);
+            spore_outline_va[i].position = sf::Vector2f( 0.0f, 0.0f);
         }
+
     }
 
     // Draw each spore by their locations from current colony.
     int draw_all_spores_from_colony(){
         int spore_vector_id = 0;
+        sf::Color spore_ol_color = SPORE_OUTLINE_COLOR;
+
         for (int y = 0; y < COLONY_HEIGHT; y++){
             for (int x = 0; x < COLONY_WIDTH; x ++){
                 vector<Spore *> & location_vector = colony->spore_man->spore_by_loc[y][x];
@@ -241,8 +248,12 @@ class Viewer {
                     Spore & spore = * p_spore;
                     int spore_index = spore.spore_id;
                     sf::Color spore_color = color_map_arr[spore.sex];
-                    //draw_spore(spore.loc_x, spore.loc_y, spore.spore_id, spore_color);
                     draw_spore(spore.loc_x, spore.loc_y, spore_vector_id++, spore_color);
+
+                    if (SHOW_SPORE_OUTLINE) {
+                        
+                        draw_spore_outline(spore.loc_x, spore.loc_y, spore_vector_id, spore_ol_color);
+                    }
                 }
             }
         }
@@ -256,20 +267,31 @@ class Viewer {
         int mapped_x = -1;
         int mapped_y = -1;
         convert_to_isometric_coor(mouse_loc.x, mouse_loc.y, mapped_x, mapped_y);
-        draw_spore_outline(mapped_x, mapped_y, SPORE_SELECTED_OUTLINE_COLOR);
+        draw_spore_outline(mapped_x, mapped_y, -1, SPORE_SELECTED_OUTLINE_COLOR);
     }
 
     // Draw outline of a spore.
-    int draw_spore_outline(int x, int y, sf::Color color){
-        sf::VertexArray & outline_va = va_map.at("spore_outline");
+    int draw_spore_outline(int x, int y, int spore_vector_id, sf::Color color){
+        sf::VertexArray * p_va;
+        int offset = 0;
+        if (spore_vector_id < 0){
+            p_va = & va_map.at("spore_outline_single");
+        }
+        else{
+            offset += spore_vector_id * 18;
+            p_va = & va_map.at("spore_outline");
+        }
+        
+        sf::VertexArray & outline_va = * p_va;
+
         for (int i = 0; i < 9 * 2; i++)
-            outline_va[i].color = color;
+            outline_va[ offset + i ].color = color;
         
         if (  // Position is out of grid, or there is no spore on that tile.
             x < 0 or y < 0 or x >= COLONY_WIDTH or y >= COLONY_HEIGHT or colony->spore_man->spore_by_loc[y][x].size() == 0
         ){
             for (int i = 0; i < 9 * 2; i++)
-                outline_va[i].position = {0, 0};
+                outline_va[ offset + i ].position = {0, 0};
             return 1;
         }
 
@@ -284,26 +306,26 @@ class Viewer {
         get_tile_loc(x + 1, y + 1, bottom_x, bottom_y);
         int i = 0;
         // Four surface lines.
-        outline_va[ i++ ].position = sf::Vector2f( top_x, top_y - spore_height );
-        outline_va[ i++ ].position = sf::Vector2f( left_x, left_y - spore_height );
-        outline_va[ i++ ].position = sf::Vector2f( left_x, left_y - spore_height );
-        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height );
-        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height );
-        outline_va[ i++ ].position = sf::Vector2f( right_x, right_y - spore_height );
-        outline_va[ i++ ].position = sf::Vector2f( right_x, right_y - spore_height );
-        outline_va[ i++ ].position = sf::Vector2f( top_x, top_y - spore_height );
+        outline_va[ offset + i++ ].position = sf::Vector2f( top_x, top_y - spore_height );
+        outline_va[ offset + i++ ].position = sf::Vector2f( left_x, left_y - spore_height );
+        outline_va[ offset + i++ ].position = sf::Vector2f( left_x, left_y - spore_height );
+        outline_va[ offset + i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height );
+        outline_va[ offset + i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height );
+        outline_va[ offset + i++ ].position = sf::Vector2f( right_x, right_y - spore_height );
+        outline_va[ offset + i++ ].position = sf::Vector2f( right_x, right_y - spore_height );
+        outline_va[ offset + i++ ].position = sf::Vector2f( top_x, top_y - spore_height );
         // Three side lines);
-        outline_va[ i++ ].position = sf::Vector2f( left_x, left_y - spore_height );
-        outline_va[ i++ ].position = sf::Vector2f( left_x, left_y );
-        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height );
-        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y );
-        outline_va[ i++ ].position = sf::Vector2f( right_x, right_y - spore_height );
-        outline_va[ i++ ].position = sf::Vector2f( right_x, right_y );
+        outline_va[ offset + i++ ].position = sf::Vector2f( left_x, left_y - spore_height );
+        outline_va[ offset + i++ ].position = sf::Vector2f( left_x, left_y );
+        outline_va[ offset + i++ ].position = sf::Vector2f( bottom_x, bottom_y - spore_height );
+        outline_va[ offset + i++ ].position = sf::Vector2f( bottom_x, bottom_y );
+        outline_va[ offset + i++ ].position = sf::Vector2f( right_x, right_y - spore_height );
+        outline_va[ offset + i++ ].position = sf::Vector2f( right_x, right_y );
         // Two bottom lines);
-        outline_va[ i++ ].position = sf::Vector2f( left_x, left_y );
-        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y );
-        outline_va[ i++ ].position = sf::Vector2f( bottom_x, bottom_y );
-        outline_va[ i++ ].position = sf::Vector2f( right_x, right_y );
+        outline_va[ offset + i++ ].position = sf::Vector2f( left_x, left_y );
+        outline_va[ offset + i++ ].position = sf::Vector2f( bottom_x, bottom_y );
+        outline_va[ offset + i++ ].position = sf::Vector2f( bottom_x, bottom_y );
+        outline_va[ offset + i++ ].position = sf::Vector2f( right_x, right_y );
     }
 
     /**
@@ -477,6 +499,7 @@ class Viewer {
             window.draw(va_map.at("grid_lines"));
             window.draw(va_map.at("spores"));
             window.draw(va_map.at("spore_outline"));
+            window.draw(va_map.at("spore_outline_single"));
 
             update_fps_calculation();
             // Draw all strings.
