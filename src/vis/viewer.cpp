@@ -108,6 +108,15 @@ class Viewer {
         mapped_y = (x + y) * tile_height / 2 + base_tile_y;
         return 0;
     }
+    // Convert window coordinates into isometric one on the grid. Return 0 means successful.
+    int convert_to_isometric_coor(int x, int y, int & mapped_x, int & mapped_y){
+        // Intermediate results.
+        float _inter_a = ((float)y - (float)base_tile_y) / (float)tile_height;
+        float _inter_b = ((float)x - (float)base_tile_x) / (float)tile_width;
+        mapped_x = (int)round( _inter_a + _inter_b );  // The -1 offset makes it more precise.
+        mapped_y = (int)round( _inter_a - _inter_b );
+        return 0;
+    }
 
     // Static ground is made of three sides, and each side is made with two triangles.
     int draw_static_ground(){
@@ -242,12 +251,27 @@ class Viewer {
         return 0;
     }
 
+    void draw_spore_outline_on_mouse(sf::RenderWindow & window){
+        sf::Vector2i mouse_loc = sf::Mouse::getPosition(window);
+        int mapped_x = -1;
+        int mapped_y = -1;
+        convert_to_isometric_coor(mouse_loc.x, mouse_loc.y, mapped_x, mapped_y);
+        draw_spore_outline(mapped_x, mapped_y, SPORE_OUTLINE_COLOR);
+    }
+
     // Draw outline of a spore.
     int draw_spore_outline(int x, int y, sf::Color color){
-
         sf::VertexArray & outline_va = va_map.at("spore_outline");
         for (int i = 0; i < 9 * 2; i++)
             outline_va[i].color = color;
+        
+        if (  // Position is out of grid, or there is no spore on that tile.
+            x < 0 or y < 0 or x >= COLONY_WIDTH or y >= COLONY_HEIGHT or colony->spore_man->spore_by_loc[y][x].size() == 0
+        ){
+            for (int i = 0; i < 9 * 2; i++)
+                outline_va[i].position = {0, 0};
+            return 1;
+        }
 
         float left_x, left_y;
         float right_x, right_y;
@@ -385,31 +409,41 @@ class Viewer {
             {
                 switch (event.type) {
                     // Close window: exit
-                    case sf::Event::Closed:
+                    case sf::Event::Closed: {
                         window.close();
                         break;
+                    }
+
+                    case sf::Event::MouseMoved: {
+                        draw_spore_outline_on_mouse(window);
+                        break;
+                    }
 
                     case sf::Event::KeyPressed:
                         switch (event.key.code){
-                            case sf::Keyboard::C:
+                            case sf::Keyboard::C: {
                                 // Step colony.
                                 colony->step_colony();
                                 break;
+                            }
                             case sf::Keyboard::F:
                                 break;
-                            case sf::Keyboard::A:
+                            case sf::Keyboard::A: {
                                 colony->spore_man->create_a_spore();
                                 break;
+                            }
                             case sf::Keyboard::I:
                                 break;
                             case sf::Keyboard::N:
                                 break;
-                            case sf::Keyboard::Space:
+                            case sf::Keyboard::Space: {
                                 colony->is_realtime = (not colony->is_realtime);
                                 break;
-                            case sf::Keyboard::D:
+                            }
+                            case sf::Keyboard::D: {
                                 window.close();
                                 break;
+                            }
                             case sf::Keyboard::Up:
                                 break;
                             case sf::Keyboard::Down:
@@ -422,6 +456,7 @@ class Viewer {
                                 break;
                         }
                         break;
+
                     default:
                         break;
                 }
