@@ -12,36 +12,36 @@ using namespace::std;
 
 
 class Viewer {
-    private:
-        // Helper variables.
-        int frame_counter = 0;
-        sf::Time zero_second = sf::seconds(0.0f);
-        sf::Time render_time = sf::seconds(1.0f / TARGET_FPS);
-        sf::Clock clock;
-        // Reusable components.
-        sf::Font font;
-        sf::Event event;
-        sf::Texture frame_texture;
-        sf::Sprite sprite;
-        sf::Sprite spore_info_pane;
-        sf::Text fps_counter_text;
-        // Pointers.
-        Colony * colony = nullptr;
-        // Color settings.
-        sf::Color color_map_arr[2];
-        // Vertex array collection.
-        map<string, sf::VertexArray> va_map;
+private:
+    // Helper variables.
+    int frame_counter = 0;
+    sf::Time zero_second = sf::seconds(0.0f);
+    sf::Time render_time = sf::seconds(1.0f / TARGET_FPS);
+    sf::Clock clock;
+    // Reusable components.
+    sf::Font font;
+    sf::Event event;
+    sf::Texture frame_texture;
+    sf::Sprite sprite;
+    sf::Sprite spore_info_pane;
+    sf::Text fps_counter_text;
+    // Pointers.
+    Colony * colony = nullptr;
+    // Color settings.
+    sf::Color color_map_arr[2];
+    // Vertex array collection.
+    map<string, sf::VertexArray> va_map;
 
-        int grid_line_count = COLONY_WIDTH + 1 + COLONY_HEIGHT + 1;
-        // Modified in constructor.
-        int tile_width = 0;
-        int tile_height = 0;
-        int base_tile_x = 0;
-        int base_tile_y = 0;
+    int grid_line_count = COLONY_WIDTH + 1 + COLONY_HEIGHT + 1;
+    // Modified in constructor.
+    int tile_width = 0;
+    int tile_height = 0;
+    int base_tile_x = 0;
+    int base_tile_y = 0;
 
-    public:
-        int width = WIDTH;
-        int height = HEIGHT;
+public:
+    int width = WIDTH;
+    int height = HEIGHT;
 
     Viewer(Colony * p_colony){
         // Setup drawing components.
@@ -246,7 +246,7 @@ class Viewer {
                 //cout << "location vector size " << location_vector.size() << endl;
                 for (Spore * p_spore : location_vector){
                     Spore & spore = * p_spore;
-                    int spore_index = spore.spore_id;
+                    // int spore_index = spore.spore_id;  // Using spore_id is not a good idea because they may decease.
                     sf::Color spore_color = color_map_arr[spore.sex];
                     draw_spore(spore.loc_x, spore.loc_y, spore_vector_id++, spore_color);
 
@@ -326,6 +326,8 @@ class Viewer {
         outline_va[ offset + i++ ].position = sf::Vector2f( bottom_x, bottom_y );
         outline_va[ offset + i++ ].position = sf::Vector2f( bottom_x, bottom_y );
         outline_va[ offset + i++ ].position = sf::Vector2f( right_x, right_y );
+
+        return 0;
     }
 
     /**
