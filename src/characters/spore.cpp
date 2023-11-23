@@ -44,6 +44,7 @@ public:
     int current_population = 0;
     BitMap * bitmap = nullptr;
     mt19937 rng;
+    int cycles = 0;
 
     vector<Spore *> spore_by_loc[COLONY_HEIGHT][COLONY_WIDTH];
 
@@ -153,7 +154,7 @@ public:
     // Check if a spore is reproduction-ready.
     bool reproduction_check(Spore & spore){
         bool reproducible = true;
-        if (SPORE_REPRODUCTION_AGE_LOW > spore.age or spore.age > SPORE_REPRODUCTION_AGE_HIGH){
+        if (SPORE_REPRODUCTION_AGE_LOW > spore.age){ // or spore.age > SPORE_REPRODUCTION_AGE_HIGH){
             reproducible = false;
         }
         if (spore.health < SPORE_REPRODUCTION_HEALTH_REQ){
@@ -217,12 +218,12 @@ public:
                         if (create_a_spore()){
                             print("No new spore created due to pop cap.");
                         } else {
-                            print("New spore created: ", current_spore_id);
+                            print("New spore created: ", current_spore_id, " total pop is ", current_population);
                         }
                     }
                 }
             // Fight event.
-            } else if (SPORE_REPRODUCTION_PCT <= event_roll and event_roll <= SPORE_REPRODUCTION_PCT + SPORE_FIGHT_PCT){
+            } else if (SPORE_REPRODUCTION_PCT <= event_roll and event_roll < SPORE_REPRODUCTION_PCT + SPORE_FIGHT_PCT){
                 // Both are males.
                 if (first_spore.sex + second_spore.sex == 2){
                     spore_fight_impact(first_spore);
@@ -285,6 +286,7 @@ public:
                         current_population--;
                         continue;
                     }
+                    // print("current pop ", current_population);
 
                     spore_move(spore.loc_x, spore.loc_y);
                     spore.moved = true;
@@ -307,6 +309,7 @@ public:
                 }
             }
         }
+        cycles++;
         return 0;
     }
 };

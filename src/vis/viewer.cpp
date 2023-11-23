@@ -7,6 +7,7 @@
 #include <SFML/Graphics.hpp>
 #include "config.h"
 #include "colony.cpp"
+#include "stat_curve.h"
 
 using namespace::std;
 
@@ -25,12 +26,17 @@ private:
     sf::Sprite sprite;
     sf::Sprite spore_info_pane;
     sf::Text fps_counter_text;
+
+    // Curve panel.
+    sf::RectangleShape curve_pane_bg;
     // Pointers.
-    Colony * colony = nullptr;
+    Colony * p_colony = nullptr;
     // Color settings.
     sf::Color color_map_arr[2];
     // Vertex array collection.
     map<string, sf::VertexArray> va_map;
+    // Population curve.
+    StatCurve * p_pop_curve = nullptr;
 
     int grid_line_count = COLONY_WIDTH + 1 + COLONY_HEIGHT + 1;
     // Modified in constructor.
@@ -43,17 +49,18 @@ public:
     int width = WIDTH;
     int height = HEIGHT;
 
-    Viewer(Colony * p_colony){
+    Viewer(Colony * pp_colony){
         // Setup drawing components.
         frame_texture.create(WIDTH, HEIGHT);
         // Setup pointers.
-        colony = p_colony;
+        p_colony = pp_colony;
         // Setup vertex arrays.
         va_map["ground"] = (sf::VertexArray(sf::Triangles, 6 * 3));
         va_map["spores"] = (sf::VertexArray(sf::Triangles, POPULATION_CAP * 6 * 3));
         va_map["grid_lines"] = (sf::VertexArray(sf::Lines, grid_line_count * 4));
         va_map["spore_outline"] = (sf::VertexArray(sf::Lines, POPULATION_CAP * 9 * 2));
         va_map["spore_outline_single"] = (sf::VertexArray(sf::Lines, 9 * 2));
+        va_map["spore_pop_curve"] = (sf::VertexArray(sf::Lines, (POP_CURVE_TIMEPOINTS - 1) * 2));
 
         // Adjust color map.
         color_map_arr[0] = RED_SPORE;
@@ -63,6 +70,7 @@ public:
         determine_base_tile_loc();
         draw_static_ground();  // Modifies va_map["ground"].
         draw_grid_lines();  // Modifies va_map["grid_lines"].
+        initialize_curve_panel();
     };
 
     // 
@@ -227,8 +235,9 @@ public:
         sf::VertexArray & spore_va = va_map.at("spores");
         sf::VertexArray & spore_outline_va = va_map.at("spore_outline");
 
-        int offset = spore_va.getVertexCount() - count * 18;  // Magic number 18 = 3sides x 2triangles x 3vertices.
-        for (int i = offset; i < spore_va.getVertexCount(); i++){
+        int target = spore_va.getVertexCount();
+        int offset = target - count * 18;  // Magic number 18 = 3sides x 2triangles x 3vertices.
+        for (int i = offset; i < target; i++){
             spore_va[i].position = sf::Vector2f( 0.0f, 0.0f);
             spore_outline_va[i].position = sf::Vector2f( 0.0f, 0.0f);
         }
@@ -242,7 +251,7 @@ public:
 
         for (int y = 0; y < COLONY_HEIGHT; y++){
             for (int x = 0; x < COLONY_WIDTH; x ++){
-                vector<Spore *> & location_vector = colony->spore_man->spore_by_loc[y][x];
+                vector<Spore *> & location_vector = p_colony->spore_man->spore_by_loc[y][x];
                 //cout << "location vector size " << location_vector.size() << endl;
                 for (Spore * p_spore : location_vector){
                     Spore & spore = * p_spore;
@@ -288,7 +297,7 @@ public:
             outline_va[ offset + i ].color = color;
         
         if (  // Position is out of grid, or there is no spore on that tile.
-            x < 0 or y < 0 or x >= COLONY_WIDTH or y >= COLONY_HEIGHT or colony->spore_man->spore_by_loc[y][x].size() == 0
+            x < 0 or y < 0 or x >= COLONY_WIDTH or y >= COLONY_HEIGHT or p_colony->spore_man->spore_by_loc[y][x].size() == 0
         ){
             for (int i = 0; i < 9 * 2; i++)
                 outline_va[ offset + i ].position = {0, 0};
@@ -392,6 +401,47 @@ public:
         
     }
     
+    void initialize_curve_panel(){
+        int height = (int)(HEIGHT * POP_CURVE_PANE_REL_HEIGHT / 100);
+        int width = (int)(WIDTH * (1 - POP_CURVE_PANE_PADDING * 2 / 100));
+        int pos_x = (int)(POP_CURVE_PANE_PADDING / 100 * WIDTH);
+        int pos_y = HEIGHT - height;
+
+        curve_pane_bg.setSize(sf::Vector2f(width, height));
+        curve_pane_bg.setPosition(pos_x, pos_y);
+        curve_pane_bg.setFillColor(sf::Color(255, 255, 255, 100));
+
+        // Initialize curve class.
+        p_pop_curve = new StatCurve(pos_x, pos_y, width, height, POP_CURVE_TIMEPOINTS);
+    }
+
+    // Draw a population curve.
+    void draw_population_curve(sf::RenderWindow & window){
+        window.draw(curve_pane_bg);
+        p_pop_curve->add_point(p_colony->spore_man->current_population);
+
+        // Draw the population curve.
+        sf::VertexArray & curve = va_map.at("spore_pop_curve");
+        int prev_x = p_pop_curve->data_x[0];
+        int prev_y = p_pop_curve->data_y[0];
+        for (int i = 0; i < POP_CURVE_TIMEPOINTS - 1; i++){
+            // Start.
+            curve[i * 2 + 0].position = sf::Vector2f( prev_x, prev_y );
+            
+            // End.
+            int next_x = p_pop_curve->data_x[i + 1];
+            int next_y = p_pop_curve->data_y[i + 1];
+            curve[i * 2 + 1].position = sf::Vector2f( next_x, next_y );
+
+            prev_x = next_x;
+            prev_y = next_y;
+        }
+
+        window.draw(curve);
+
+    }
+
+
     // Entrypoint.
     int launch_window(){
         // Create drawing window.
@@ -419,13 +469,13 @@ public:
         while (window.isOpen()){
             sf::Time elapsed_time = clock.restart();
             // Indefinitely update drawing (limited by TARGET_FPS).
-            if (colony->is_realtime){
-                if (colony->residual_time > zero_second){
-                    colony->residual_time -= elapsed_time;
+            if (p_colony->is_realtime){
+                if (p_colony->residual_time > zero_second){
+                    p_colony->residual_time -= elapsed_time;
                 }
                 else{
-                    colony->residual_time += render_time;
-                    colony->step_colony();
+                    p_colony->residual_time += render_time;
+                    p_colony->step_colony();
                 }
             }
             // Detect events.
@@ -447,13 +497,13 @@ public:
                         switch (event.key.code){
                             case sf::Keyboard::C: {
                                 // Step colony.
-                                colony->step_colony();
+                                p_colony->step_colony();
                                 break;
                             }
                             case sf::Keyboard::F:
                                 break;
                             case sf::Keyboard::A: {
-                                colony->spore_man->create_a_spore();
+                                p_colony->spore_man->create_a_spore();
                                 break;
                             }
                             case sf::Keyboard::I:
@@ -461,7 +511,7 @@ public:
                             case sf::Keyboard::N:
                                 break;
                             case sf::Keyboard::Space: {
-                                colony->is_realtime = (not colony->is_realtime);
+                                p_colony->is_realtime = (not p_colony->is_realtime);
                                 break;
                             }
                             case sf::Keyboard::D: {
@@ -495,6 +545,9 @@ public:
 
             // Draw spore locations;
             draw_all_spores_from_colony();
+
+            // Draw population curve.
+            draw_population_curve(window);
         
             // Draw vertex arrays. Mind the order of them.
             window.draw(va_map.at("ground"));
