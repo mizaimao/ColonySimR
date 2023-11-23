@@ -7,7 +7,7 @@ const int MASTER_SEED = 720;
 // Colony.
 const int COLONY_WIDTH = 20;
 const int COLONY_HEIGHT = 20;
-const int INITIAL_SPORE_COUNT = 200;
+const int INITIAL_SPORE_COUNT = 50;
 const int POPULATION_CAP = 200;
 
 // Viewer.
@@ -32,6 +32,11 @@ int TILE_HEIGHT = (int)( CENTRAL_TOTAL_HEIGHT / COLONY_HEIGHT);
 const int X_OFFSET = LEFT_PANE_WIDTH + CENTRAL_TOTAL_WIDTH;
 const int Y_OFFSET = CENTRAL_PADDING_Y;
 
+// UI: Population curve.
+const float POP_CURVE_PANE_PADDING = 5.f;
+const float POP_CURVE_PANE_REL_HEIGHT = 20.f;
+const int POP_CURVE_TIMEPOINTS = 50;
+
 // Viewer aesthetics.
 const sf::Color GRID_COLOR(150, 150, 150);
 const sf::Color BG_COLOR(103, 193, 202);
@@ -54,7 +59,7 @@ const int SPORE_AGE_CAP = -1;  // Spores elder than this age will be killed (is 
 
 const int SPORE_REPRODUCTION_PCT = 10;  // How likely spores reproduce when encountered (requires opposite sexes).
 const int SPORE_REPRODUCTION_AGE_LOW = 0;  // At least how old a spore can reproduce.
-const int SPORE_REPRODUCTION_AGE_HIGH = 50;  // At most how old a spore can reproduce.
+// const int SPORE_REPRODUCTION_AGE_HIGH = 50;  // At most how old a spore can reproduce.
 const int SPORE_REPRODUCTION_HEALTH_REQ = 90;  // At least how healthy a spore can reproduce.
 const int SPORE_REPRODUCTION_MOOD_REQ = 80;  // At least how happy a spore can reproduce.
 const int SPORE_REPRODUCTION_CONCEIVE_RATE = 50;  // If a reproduction is triggered, this is the chance of getting a new spore.
