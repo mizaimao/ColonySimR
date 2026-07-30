@@ -24,7 +24,6 @@ private:
     double fps_smooth = 0.0;    // Smoothed FPS over ~30 frames
 
     // Decoupled simulation timing
-    static constexpr double SIM_TICK_MS = 100.0;  // 10 sim ticks per second
     double sim_accumulator_ms = 0.0;  // Accumulated time for sim steps
 
     // SDL components.
@@ -337,8 +336,9 @@ public:
         Uint64 last_sim_tick = SDL_GetPerformanceCounter();  // For sim timing
 
         // Message text surface (left pane)
-        SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
-        SDL_Surface * msg_surf = TTF_RenderText_Blended(font, "Chicken simulator\n[C] Step | [Space] Auto | [A] Add spore | 10 sim ticks/sec", {50, 50, 50});
+        std::string msg_str = "Chicken simulator\n[C] Step | [Space] Auto | [A] Add spore | "
+            + std::to_string(SIM_TICKS_PER_SEC) + " sim ticks/sec";
+        SDL_Surface * msg_surf = TTF_RenderText_Blended(font, msg_str.c_str(), {50, 50, 50});
         SDL_Texture * msg_txt = SDL_CreateTextureFromSurface(renderer, msg_surf);
 
         // Main loop
