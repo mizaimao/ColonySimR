@@ -1,5 +1,18 @@
 #pragma once
-#include <SFML/Graphics.hpp>
+#include <cstdint>
+
+// Color helper (replaces sf::Color)
+struct Color {
+    uint8_t r, g, b, a;
+    Color(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a = 255)
+        : r(_r), g(_g), b(_b), a(_a) {}
+    Color() : r(0), g(0), b(0), a(255) {}
+
+    // Clamped addition/subtraction for color modifiers (SFML-style)
+    static uint8_t clamp(int v) { return v < 0 ? 0 : (v > 255 ? 255 : (uint8_t)v); }
+    Color operator+(const Color &o) const { return {clamp(r+o.r), clamp(g+o.g), clamp(b+o.b), a}; }
+    Color operator-(const Color &o) const { return {clamp(r-o.r), clamp(g-o.g), clamp(b-o.b), a}; }
+};
 
 // Randomness.
 const int MASTER_SEED = 720;
@@ -38,21 +51,21 @@ const float POP_CURVE_PANE_REL_HEIGHT = 20.f;
 const int POP_CURVE_TIMEPOINTS = 50;
 
 // Viewer aesthetics.
-const sf::Color GRID_COLOR(150, 150, 150);
-const sf::Color BG_COLOR(103, 193, 202);
-const sf::Color SPORE_OUTLINE_COLOR(120, 120, 120);
-const sf::Color SPORE_SELECTED_OUTLINE_COLOR(255, 255, 255);
-const sf::Color GROUND_COLOR(141, 191, 57);
-const sf::Color UNDERGROUND_COLOR(155, 118, 83);
-const sf::Color UNDERGROUND_LEFT_COLOR_MODIFIER(20, 20, 20, 0);
-const sf::Color UNDERGROUND_RIGHT_COLOR_MODIFIER(20, 20, 20, 0);
+const Color GRID_COLOR(150, 150, 150);
+const Color BG_COLOR(103, 193, 202);
+const Color SPORE_OUTLINE_COLOR(120, 120, 120);
+const Color SPORE_SELECTED_OUTLINE_COLOR(255, 255, 255);
+const Color GROUND_COLOR(141, 191, 57);
+const Color UNDERGROUND_COLOR(155, 118, 83);
+const Color UNDERGROUND_LEFT_COLOR_MODIFIER(20, 20, 20, 0);
+const Color UNDERGROUND_RIGHT_COLOR_MODIFIER(20, 20, 20, 0);
 const float UNDERGROUND_HEIGHT_REL = 0.05f;  // Ratio to CENTRAL_TOTAL_HEIGHT.
 const float SPORE_HEIGHT_REL = 0.3f;  // Ratio to tile_height (calculated in viewer).
 
-const sf::Color SPORE_LEFT_COLOR_MODIFIER(20, 20, 20, 0);
-const sf::Color SPORE_RIGHT_COLOR_MODIFIER(20, 20, 20, 0);
-const sf::Color BLUE_SPORE(66, 158, 245);
-const sf::Color RED_SPORE(250, 95, 95);
+const Color SPORE_LEFT_COLOR_MODIFIER(20, 20, 20, 0);
+const Color SPORE_RIGHT_COLOR_MODIFIER(20, 20, 20, 0);
+const Color BLUE_SPORE(66, 158, 245);
+const Color RED_SPORE(250, 95, 95);
 
 // Spore events.
 const int SPORE_AGE_CAP = -1;  // Spores elder than this age will be killed (is it how it works now?).

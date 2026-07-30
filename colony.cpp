@@ -1,7 +1,6 @@
 #pragma once
 #include <iostream>
 #include <random>
-#include <SFML/Graphics.hpp>
 
 #include "src/terrain/terrain_map.cpp"
 #include "src/characters/spore.cpp"
@@ -13,9 +12,9 @@ class Colony{
 public:
     SporeManager * spore_man = nullptr;
     BitMap * bitmap = nullptr;
-    
+
     bool is_realtime = false;
-    sf::Time residual_time = sf::seconds(0.0f);
+    double residual_time_ms = 0.0;  // Remaining ms before next auto-step
 
 
     Colony(){
