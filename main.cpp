@@ -1,4 +1,3 @@
-#include <iostream>
 #include "src/vis/viewer.cpp"
 #include "colony.cpp"
 #include "config_validation.cpp"

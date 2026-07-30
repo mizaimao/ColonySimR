@@ -39,7 +39,6 @@ public:
 // Controls all spores' behavior as a collection.
 class SporeManager {
 public:
-    vector<Spore> spores_v;
     int current_spore_id = 0;
     int current_population = 0;
     BitMap * bitmap = nullptr;
@@ -58,7 +57,6 @@ public:
         }
     };
 
-    // No idea if it's correct...
     ~SporeManager(){
         for (int xx = 0; xx < COLONY_WIDTH; xx++){
             for (int yy = 0; yy < COLONY_HEIGHT; yy++){
@@ -67,13 +65,8 @@ public:
                     delete p_spore;
                 }
                 location_vector.clear();
-                location_vector.shrink_to_fit();
             }
-            (*spore_by_loc[xx]).clear();
-            (*spore_by_loc[xx]).shrink_to_fit();
         }
-        // delete bitmap;
-        // delete &spores_v;
     };
 
     int create_a_spore(
@@ -146,11 +139,6 @@ public:
         };
     }
     
-    // Remove a spore. For whatever reason we delist this spore from our humble colony.
-    int remove_spore(){
-        return 1;
-    }
-
     // Check if a spore is reproduction-ready.
     bool reproduction_check(Spore & spore){
         bool reproducible = true;
