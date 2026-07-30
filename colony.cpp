@@ -14,7 +14,6 @@ public:
     BitMap * bitmap = nullptr;
 
     bool is_realtime = false;
-    double residual_time_ms = 0.0;
 
     Colony(SporeManager * p_spore_man, BitMap * p_bitmap){
         spore_man = p_spore_man;

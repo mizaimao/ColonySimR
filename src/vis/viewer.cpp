@@ -20,8 +20,12 @@ private:
     int frame_counter = 0;
     double target_frame_ms = 1000.0 / TARGET_FPS;
     Uint64 perf_freq = 0;       // Performance counter frequency
-    Uint64 last_perf_tick = 0;  // Previous high-res tick
+    Uint64 last_perf_tick = 0;  // Previous high-res tick (for FPS display)
     double fps_smooth = 0.0;    // Smoothed FPS over ~30 frames
+
+    // Decoupled simulation timing
+    static constexpr double SIM_TICK_MS = 100.0;  // 10 sim ticks per second
+    double sim_accumulator_ms = 0.0;  // Accumulated time for sim steps
 
     // SDL components.
     SDL_Window * window = nullptr;
@@ -330,10 +334,11 @@ public:
         // Init performance counter
         perf_freq = SDL_GetPerformanceFrequency();
         last_perf_tick = SDL_GetPerformanceCounter();
+        Uint64 last_sim_tick = SDL_GetPerformanceCounter();  // For sim timing
 
         // Message text surface (left pane)
         SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
-        SDL_Surface * msg_surf = TTF_RenderText_Blended(font, "Chicken simulator\n[C] Step | [Space] Auto | [A] Add spore", {50, 50, 50});
+        SDL_Surface * msg_surf = TTF_RenderText_Blended(font, "Chicken simulator\n[C] Step | [Space] Auto | [A] Add spore | 10 sim ticks/sec", {50, 50, 50});
         SDL_Texture * msg_txt = SDL_CreateTextureFromSurface(renderer, msg_surf);
 
         // Main loop
@@ -341,9 +346,19 @@ public:
         while (running){
             Uint64 frame_start_perf = SDL_GetPerformanceCounter();
 
-            // Auto-step in realtime mode
+            // Decoupled simulation: accumulate real time and fire fixed-rate sim ticks
             if (p_colony->is_realtime){
-                p_colony->step_colony();
+                Uint64 now = SDL_GetPerformanceCounter();
+                double elapsed_ms = (double)(now - last_sim_tick) / perf_freq * 1000.0;
+                last_sim_tick = now;
+                sim_accumulator_ms += elapsed_ms;
+                // Fire as many sim ticks as have accumulated
+                int catch_up_count = 0;
+                while (sim_accumulator_ms >= SIM_TICK_MS){
+                    p_colony->step_colony();
+                    sim_accumulator_ms -= SIM_TICK_MS;
+                    if (++catch_up_count >= 10) break;  // Prevent spiral of death
+                }
             }
 
             // Handle events
