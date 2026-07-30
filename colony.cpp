@@ -14,22 +14,7 @@ public:
     BitMap * bitmap = nullptr;
 
     bool is_realtime = false;
-    double residual_time_ms = 0.0;  // Remaining ms before next auto-step
-
-
-    Colony(){
-        start_colony();
-
-    }
-
-    int start_colony(){
-        std::cout << "col manager called " << std::endl;
-        BitMap init_bitmap(COLONY_WIDTH, COLONY_HEIGHT);
-        bitmap = &init_bitmap;
-        SporeManager init_spore_man(10, &init_bitmap);
-        spore_man = &init_spore_man;
-        return 0;
-    }
+    double residual_time_ms = 0.0;
 
     Colony(SporeManager * p_spore_man, BitMap * p_bitmap){
         spore_man = p_spore_man;
