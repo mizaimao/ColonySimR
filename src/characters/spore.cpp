@@ -8,6 +8,7 @@
 #include "src/terrain/terrain_map.cpp"
 #include "utils.cpp"
 #include "config.h"
+#include "config.cpp"  // For runtime Config `cfg`
 
 using namespace::std;
 
@@ -50,7 +51,7 @@ public:
     SporeManager(
         int initial_pop, BitMap * r_bitmap, int pop_cap = 200, int seed = 720
     ){
-        rng.seed(MASTER_SEED);
+        rng.seed(seed);
         bitmap = r_bitmap;
         for (int i = 0; i < initial_pop; i++){
             create_a_spore();
@@ -142,13 +143,13 @@ public:
     // Check if a spore is reproduction-ready.
     bool reproduction_check(Spore & spore){
         bool reproducible = true;
-        if (SPORE_REPRODUCTION_AGE_LOW > spore.age){ // or spore.age > SPORE_REPRODUCTION_AGE_HIGH){
+        if (cfg.repro_min_age > spore.age){ // or spore.age > SPORE_REPRODUCTION_AGE_HIGH){
             reproducible = false;
         }
-        if (spore.health < SPORE_REPRODUCTION_HEALTH_REQ){
+        if (spore.health < cfg.repro_min_health){
             reproducible = false;
         }
-        if (spore.mood < SPORE_REPRODUCTION_MOOD_REQ){
+        if (spore.mood < cfg.repro_min_mood){
             reproducible = false;
         }
         return reproducible;
@@ -157,22 +158,22 @@ public:
     // Determines outcome of a spore fight for one side. Need to call twice to cover both sides.
     // Death is not handled here but in the step function.
     void spore_fight_impact(Spore & spore){
-        if ((rng() % 100) < SPORE_FIGHT_FATAL_PCT){  // Fatal fight.
+        if ((rng() % 100) < cfg.fight_fatal_pct){  // Fatal fight.
             spore.health = 0.0f;
         } else {
-            spore.health -= rng() % SPORE_FIGHT_DAMAGE_IMPACT_MAX;
+            spore.health -= rng() % cfg.fight_max_damage;
         }
     }
 
     // Determines outcome of a spore conversation.
     void spore_chat_impact(Spore & spore){
         int roll = rng() % 100;
-        if (roll < SPORE_CHAT_HAPPINESS_CHANCE){
-            spore.mood = min(100.0f, spore.mood + rng() % SPORE_CHAT_MOOD_IMPACT_MAX);
-        } else if (SPORE_CHAT_HAPPINESS_CHANCE <= roll and roll <= SPORE_CHAT_HAPPINESS_CHANCE + SPORE_CHAT_NEUTRAL_CHANCE){
+        if (roll < cfg.chat_happy_pct){
+            spore.mood = min(100.0f, spore.mood + rng() % cfg.chat_mood_impact_max);
+        } else if (cfg.chat_happy_pct <= roll and roll <= cfg.chat_happy_pct + cfg.chat_neutral_pct){
             // Nothing happens due to a neutral conversation.
         } else {
-            spore.mood = max(0.0f, spore.mood - rng() % SPORE_CHAT_MOOD_IMPACT_MAX);
+            spore.mood = max(0.0f, spore.mood - rng() % cfg.chat_mood_impact_max);
         }
     }
 
@@ -198,11 +199,11 @@ public:
             int event_roll = rng() % 100;
 
             // Reproduction event.
-            if (0 <= event_roll and event_roll < SPORE_REPRODUCTION_PCT){
+            if (0 <= event_roll and event_roll < cfg.repro_event_pct){
                 // Opposite sex.
                 if (first_spore.sex + second_spore.sex == 1 and reproduction_check(first_spore) and reproduction_check(second_spore)){
                     // Now roll a die to decide if a new spore can be created.
-                    if ((rng() % 100) < SPORE_REPRODUCTION_CONCEIVE_RATE){
+                    if ((rng() % 100) < cfg.repro_conceive_rate){
                         if (create_a_spore()){
                             print("No new spore created due to pop cap.");
                         } else {
@@ -211,14 +212,14 @@ public:
                     }
                 }
             // Fight event.
-            } else if (SPORE_REPRODUCTION_PCT <= event_roll and event_roll < SPORE_REPRODUCTION_PCT + SPORE_FIGHT_PCT){
+            } else if (cfg.repro_event_pct <= event_roll and event_roll < cfg.repro_event_pct + cfg.fight_event_pct){
                 // Both are males.
                 if (first_spore.sex + second_spore.sex == 2){
                     spore_fight_impact(first_spore);
                     spore_fight_impact(second_spore);
                 }
             // Chat event.
-            } else if (SPORE_REPRODUCTION_PCT + SPORE_FIGHT_PCT <= event_roll and event_roll < 100){
+            } else if (cfg.repro_event_pct + cfg.fight_event_pct <= event_roll and event_roll < 100){
                 spore_chat_impact(first_spore);
                 spore_chat_impact(second_spore);
             } else {
@@ -234,7 +235,7 @@ public:
      * Returns 1 if it should be dead.
     */
     bool update_spore_status(Spore & spore){
-        if (spore.age++ > SPORE_AGE_CAP and SPORE_AGE_CAP > 0){
+        if (spore.age++ > cfg.spore_age_cap and cfg.spore_age_cap > 0){
             print("Spore ", spore.spore_id, " got killed due to aging.");
             return true;
         }
@@ -242,8 +243,8 @@ public:
             print("Spore ", spore.spore_id, " got killed due to low health.");
             return true;
         }
-        spore.health = min(100.0f, spore.health + SPORE_HEALTH_RECOVER_PER_TURN);
-        spore.mood = min(100.0f, spore.mood + SPORE_MOOD_RECOVER_PER_TURN);
+        spore.health = min(100.0f, spore.health + cfg.spore_health_recover_per_turn);
+        spore.mood = min(100.0f, spore.mood + cfg.spore_mood_recover_per_turn);
         return false;
     }
 
