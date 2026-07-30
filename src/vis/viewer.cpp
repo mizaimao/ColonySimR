@@ -243,13 +243,13 @@ private:
         }
         SDL_RenderDrawLinesF(renderer, points.data(), (int)points.size());
 
-        // Draw population text
-        SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
+        // Draw population text at natural size
         std::stringstream ss;
         ss << "Population: " << p_colony->spore_man->current_population;
         SDL_Surface * surf = TTF_RenderText_Blended(font, ss.str().c_str(), {50, 50, 50});
+        if (!surf) return;
         SDL_Texture * txt = SDL_CreateTextureFromSurface(renderer, surf);
-        SDL_Rect dst = {curve_pos_x + 10, curve_pos_y + 5, 120, 20};
+        SDL_Rect dst = {curve_pos_x + 10, curve_pos_y + 5, surf->w, surf->h};
         SDL_RenderCopy(renderer, txt, nullptr, &dst);
         SDL_DestroyTexture(txt);
         SDL_FreeSurface(surf);
@@ -262,10 +262,9 @@ private:
         std::stringstream ss;
         ss << std::fixed << std::setprecision(1) << fps << " FPS";
         SDL_Surface * surf = TTF_RenderText_Blended(font, ss.str().c_str(), {50, 50, 50});
+        if (!surf) return;
         SDL_Texture * txt = SDL_CreateTextureFromSurface(renderer, surf);
-        int w, h;
-        SDL_QueryTexture(txt, nullptr, nullptr, &w, &h);
-        SDL_Rect dst = {(int)(WIDTH - w - 10), 5, w, h};
+        SDL_Rect dst = {(int)(WIDTH - surf->w - 10), 5, surf->w, surf->h};
         SDL_RenderCopy(renderer, txt, nullptr, &dst);
         SDL_DestroyTexture(txt);
         SDL_FreeSurface(surf);
@@ -388,7 +387,7 @@ public:
             // UI elements
             draw_population_curve();
             {
-                SDL_Rect msg_rect = {0, 10, 280, 50};
+                SDL_Rect msg_rect = {10, 10, msg_surf->w, msg_surf->h};
                 SDL_RenderCopy(renderer, msg_txt, nullptr, &msg_rect);
             }
 
