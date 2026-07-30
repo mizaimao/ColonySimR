@@ -30,6 +30,10 @@ const int HEIGHT = 800;
 const bool SHOW_TILE_GRIDLINES = true;
 const bool SHOW_SPORE_OUTLINE = false;
 
+// Simulation tick rate (decoupled from render FPS).
+const int SIM_TICK_MS = 100;       // ms per sim tick (default: 10 ticks/sec)
+const int SIM_TICKS_PER_SEC = 1000 / SIM_TICK_MS;
+
 // Viewer offsets.
 const int LOWER_PANE_HEIGHT = 200;
 const int LEFT_PANE_WIDTH = 300;
