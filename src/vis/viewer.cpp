@@ -19,6 +19,9 @@ private:
     // Helper variables.
     int frame_counter = 0;
     double target_frame_ms = 1000.0 / TARGET_FPS;
+    Uint64 perf_freq = 0;       // Performance counter frequency
+    Uint64 last_perf_tick = 0;  // Previous high-res tick
+    double fps_smooth = 0.0;    // Smoothed FPS over ~30 frames
 
     // SDL components.
     SDL_Window * window = nullptr;
@@ -257,10 +260,9 @@ private:
 
     // ---- FPS counter ----
 
-    void draw_fps(Uint32 frame_time_ms){
-        double fps = 1000.0 / (frame_time_ms > 0 ? frame_time_ms : 1);
+    void draw_fps(){
         std::stringstream ss;
-        ss << std::fixed << std::setprecision(1) << fps << " FPS";
+        ss << std::fixed << std::setprecision(0) << fps_smooth << " FPS";
         SDL_Surface * surf = TTF_RenderText_Blended(font, ss.str().c_str(), {50, 50, 50});
         if (!surf) return;
         SDL_Texture * txt = SDL_CreateTextureFromSurface(renderer, surf);
@@ -325,6 +327,10 @@ public:
             return EXIT_FAILURE;
         }
 
+        // Init performance counter
+        perf_freq = SDL_GetPerformanceFrequency();
+        last_perf_tick = SDL_GetPerformanceCounter();
+
         // Message text surface (left pane)
         SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
         SDL_Surface * msg_surf = TTF_RenderText_Blended(font, "Chicken simulator\n[C] Step | [Space] Auto | [A] Add spore", {50, 50, 50});
@@ -333,7 +339,7 @@ public:
         // Main loop
         bool running = true;
         while (running){
-            Uint32 frame_start = SDL_GetTicks();
+            Uint64 frame_start_perf = SDL_GetPerformanceCounter();
 
             // Auto-step in realtime mode
             if (p_colony->is_realtime){
@@ -391,19 +397,30 @@ public:
                 SDL_RenderCopy(renderer, msg_txt, nullptr, &msg_rect);
             }
 
-            // FPS (drawn last)
-            Uint32 frame_end = SDL_GetTicks();
-            draw_fps(frame_end - frame_start);
+            // FPS (smoothed, drawn last)
+            {
+                Uint64 now = SDL_GetPerformanceCounter();
+                double frame_ms = (double)(now - last_perf_tick) / perf_freq * 1000.0;
+                double instant_fps = frame_ms > 0 ? 1000.0 / frame_ms : TARGET_FPS;
+                if (fps_smooth == 0.0) {
+                    fps_smooth = instant_fps;
+                } else {
+                    fps_smooth = fps_smooth * 0.9 + instant_fps * 0.1;
+                }
+                last_perf_tick = now;
+            }
+            draw_fps();
 
             // Present
             SDL_RenderPresent(renderer);
             frame_counter++;
 
-            // Frame timing
+            // Frame timing (delay to hit target FPS)
             {
-                double elapsed = frame_end - frame_start;
-                if (elapsed < target_frame_ms){
-                    SDL_Delay((Uint32)(target_frame_ms - elapsed));
+                Uint64 frame_end_perf = SDL_GetPerformanceCounter();
+                double elapsed_ms = (double)(frame_end_perf - frame_start_perf) / perf_freq * 1000.0;
+                if (elapsed_ms < target_frame_ms){
+                    SDL_Delay((Uint32)(target_frame_ms - elapsed_ms));
                 }
             }
         }
