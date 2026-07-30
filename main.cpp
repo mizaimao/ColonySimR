@@ -5,7 +5,13 @@
 
 int main(){
 
-    // Check configuration file.
+    // Load configuration from config.toml
+    if (!cfg.load()){
+        std::cerr << "Failed to load config.toml. Exiting." << std::endl;
+        return 1;
+    }
+
+    // Check configuration validity.
     if (config_check()){
         return 1;
     }
@@ -14,7 +20,7 @@ int main(){
     }
 
     BitMap init_bitmap(COLONY_WIDTH, COLONY_HEIGHT);
-    SporeManager init_spore_man(INITIAL_SPORE_COUNT, &init_bitmap);
+    SporeManager init_spore_man(cfg.initial_spore_count, &init_bitmap, POPULATION_CAP, cfg.master_seed);
 
     Colony colony(&init_spore_man, &init_bitmap);
     Viewer viewer(&colony);

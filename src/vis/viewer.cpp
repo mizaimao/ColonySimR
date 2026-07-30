@@ -8,6 +8,7 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include "config.h"
+#include "config.cpp"  // For runtime Config `cfg`
 #include "colony.cpp"
 #include "stat_curve.h"
 
@@ -18,7 +19,7 @@ class Viewer {
 private:
     // Helper variables.
     int frame_counter = 0;
-    double target_frame_ms = 1000.0 / TARGET_FPS;
+    double target_frame_ms = 1000.0 / cfg.target_fps;
     Uint64 perf_freq = 0;       // Performance counter frequency
     Uint64 last_perf_tick = 0;  // Previous high-res tick (for FPS display)
     double fps_smooth = 0.0;    // Smoothed FPS over ~30 frames
@@ -38,7 +39,7 @@ private:
     // Population curve.
     StatCurve * p_pop_curve = nullptr;
 
-    // Tile geometry.
+    // Tile geometry (computed from runtime config).
     int tile_width = 0;
     int tile_height = 0;
     float base_tile_x = 0;
@@ -74,15 +75,31 @@ private:
     // ---- Isometric coordinate helpers ----
 
     int determine_base_tile_loc(){
-        if (min(TILE_WIDTH, TILE_HEIGHT) == TILE_WIDTH){
-            tile_width = TILE_WIDTH;
-            tile_height = (int)(TILE_WIDTH / 2);
+        int total_width = cfg.get_central_total_width();
+        int total_height = cfg.get_central_total_height();
+
+        int base_tile, other_tile;
+        if (min(total_width, total_height) == total_width){
+            base_tile = total_width;
+            other_tile = (int)(total_width / 2);
         } else {
-            tile_height = TILE_HEIGHT;
-            tile_width = (int)(TILE_HEIGHT * 2);
+            base_tile = total_height;
+            other_tile = (int)(base_tile * 2);
         }
-        base_tile_x = LEFT_PANE_WIDTH + (COLONY_WIDTH / 2) * tile_width;
-        base_tile_y = Y_OFFSET;
+        tile_width = other_tile;
+        tile_height = base_tile / 2;
+
+        // Recalculate: use the ratio approach (2:1 isometric)
+        if (min(total_width, total_height) == total_width){
+            tile_width = total_width;
+            tile_height = (int)(total_width / 2);
+        } else {
+            tile_height = total_height;
+            tile_width = (int)(tile_height * 2);
+        }
+
+        base_tile_x = cfg.left_pane_width + (COLONY_WIDTH / 2) * tile_width;
+        base_tile_y = cfg.central_padding_y;
         return 0;
     }
 
@@ -108,13 +125,13 @@ private:
         get_tile_loc(COLONY_WIDTH, COLONY_HEIGHT, bottom_x, bottom_y);
 
         // Above ground diamond (2 triangles)
-        draw_filled_triangle(renderer, GROUND_COLOR, left_x, left_y, top_x, top_y, bottom_x, bottom_y);
-        draw_filled_triangle(renderer, GROUND_COLOR, bottom_x, bottom_y, right_x, right_y, top_x, top_y);
+        draw_filled_triangle(renderer, cfg.color_ground, left_x, left_y, top_x, top_y, bottom_x, bottom_y);
+        draw_filled_triangle(renderer, cfg.color_ground, bottom_x, bottom_y, right_x, right_y, top_x, top_y);
 
         // Underground sides
-        float under_height = UNDERGROUND_HEIGHT_REL * CENTRAL_TOTAL_HEIGHT;
-        Color ulc = UNDERGROUND_COLOR + UNDERGROUND_LEFT_COLOR_MODIFIER;
-        Color urc = UNDERGROUND_COLOR - UNDERGROUND_RIGHT_COLOR_MODIFIER;
+        float under_height = cfg.underground_height_ratio * cfg.get_central_total_height();
+        Color ulc = cfg.color_underground + cfg.color_underground_left_mod;
+        Color urc = cfg.color_underground - cfg.color_underground_right_mod;
 
         draw_filled_triangle(renderer, ulc, left_x, left_y, left_x, left_y + under_height, bottom_x, bottom_y);
         draw_filled_triangle(renderer, ulc, bottom_x, bottom_y, bottom_x, bottom_y + under_height, left_x, left_y + under_height);
@@ -126,24 +143,24 @@ private:
     // ---- Grid lines ----
 
     void draw_grid_lines(){
-        if (!SHOW_TILE_GRIDLINES) return;
-        float under_height = UNDERGROUND_HEIGHT_REL * CENTRAL_TOTAL_HEIGHT;
+        if (!cfg.show_gridlines) return;
+        float under_height = cfg.underground_height_ratio * cfg.get_central_total_height();
 
         // Horizontal grid lines
         for (int i = 0; i <= COLONY_HEIGHT; i++){
             float lx, ly, rx, ry;
             get_tile_loc(0, i, lx, ly);
             get_tile_loc(COLONY_WIDTH, i, rx, ry);
-            draw_line(renderer, GRID_COLOR, lx, ly, rx, ry);
-            draw_line(renderer, GRID_COLOR, rx, ry, rx, ry + under_height);
+            draw_line(renderer, cfg.color_grid, lx, ly, rx, ry);
+            draw_line(renderer, cfg.color_grid, rx, ry, rx, ry + under_height);
         }
         // Vertical grid lines
         for (int i = 1; i <= COLONY_WIDTH; i++){
             float tx, ty, bx, by;
             get_tile_loc(i, 0, tx, ty);
             get_tile_loc(i, COLONY_HEIGHT, bx, by);
-            draw_line(renderer, GRID_COLOR, tx, ty, bx, by);
-            draw_line(renderer, GRID_COLOR, bx, by, bx, by + under_height);
+            draw_line(renderer, cfg.color_grid, tx, ty, bx, by);
+            draw_line(renderer, cfg.color_grid, bx, by, bx, by + under_height);
         }
     }
 
@@ -151,14 +168,14 @@ private:
 
     void draw_spore(int x, int y, Color base_color){
         float left_x, left_y, right_x, right_y, top_x, top_y, bottom_x, bottom_y;
-        float spore_height = SPORE_HEIGHT_REL * tile_height;
+        float spore_height = cfg.spore_height_ratio * tile_height;
         get_tile_loc(x, y + 1, left_x, left_y);
         get_tile_loc(x + 1, y, right_x, right_y);
         get_tile_loc(x, y, top_x, top_y);
         get_tile_loc(x + 1, y + 1, bottom_x, bottom_y);
 
-        Color lcolor = base_color + SPORE_LEFT_COLOR_MODIFIER;
-        Color rcolor = base_color - SPORE_RIGHT_COLOR_MODIFIER;
+        Color lcolor = base_color + cfg.color_spore_left_mod;
+        Color rcolor = base_color - cfg.color_spore_right_mod;
 
         // Top face (2 triangles)
         draw_filled_triangle(renderer, base_color, left_x, left_y - spore_height, top_x, top_y - spore_height, bottom_x, bottom_y - spore_height);
@@ -178,7 +195,7 @@ private:
         if (p_colony->spore_man->spore_by_loc[y][x].size() == 0) return;
 
         float left_x, left_y, right_x, right_y, top_x, top_y, bottom_x, bottom_y;
-        float spore_height = SPORE_HEIGHT_REL * tile_height;
+        float spore_height = cfg.spore_height_ratio * tile_height;
         get_tile_loc(x, y + 1, left_x, left_y);
         get_tile_loc(x + 1, y, right_x, right_y);
         get_tile_loc(x, y, top_x, top_y);
@@ -208,8 +225,8 @@ private:
                     Spore & spore = *p_spore;
                     Color spore_color = color_map_arr[spore.sex];
                     draw_spore(spore.loc_x, spore.loc_y, spore_color);
-                    if (SHOW_SPORE_OUTLINE) {
-                        draw_spore_outline(spore.loc_x, spore.loc_y, SPORE_OUTLINE_COLOR);
+                    if (cfg.show_spore_outline) {
+                        draw_spore_outline(spore.loc_x, spore.loc_y, cfg.color_spore_outline);
                     }
                 }
             }
@@ -221,18 +238,18 @@ private:
         SDL_GetMouseState(&mx, &my);
         int mapped_x, mapped_y;
         convert_to_isometric_coor(mx, my, mapped_x, mapped_y);
-        draw_spore_outline(mapped_x, mapped_y, SPORE_SELECTED_OUTLINE_COLOR);
+        draw_spore_outline(mapped_x, mapped_y, cfg.color_spore_selected);
     }
 
     // ---- Population curve ----
 
     void initialize_curve_panel(){
-        curve_height = (int)(HEIGHT * POP_CURVE_PANE_REL_HEIGHT / 100);
-        curve_width = (int)(WIDTH * (1 - POP_CURVE_PANE_PADDING * 2 / 100));
-        curve_pos_x = (int)(POP_CURVE_PANE_PADDING / 100 * WIDTH);
-        curve_pos_y = HEIGHT - curve_height;
+        curve_height = (int)(cfg.window_height * cfg.pop_curve_height_pct / 100);
+        curve_width = (int)(cfg.window_width * (1 - cfg.pop_curve_padding_pct * 2 / 100));
+        curve_pos_x = (int)(cfg.pop_curve_padding_pct / 100 * cfg.window_width);
+        curve_pos_y = cfg.window_height - curve_height;
 
-        p_pop_curve = new StatCurve(curve_pos_x, curve_pos_y, curve_width, curve_height, POP_CURVE_TIMEPOINTS);
+        p_pop_curve = new StatCurve(curve_pos_x, curve_pos_y, curve_width, curve_height, cfg.pop_curve_timepoints);
     }
 
     void draw_population_curve(){
@@ -244,7 +261,7 @@ private:
         // Draw the curve line
         SDL_SetRenderDrawColor(renderer, 240, 240, 240, 255);
         std::vector<SDL_FPoint> points;
-        for (int i = 0; i < POP_CURVE_TIMEPOINTS; i++){
+        for (int i = 0; i < cfg.pop_curve_timepoints; i++){
             points.push_back({(float)p_pop_curve->data_x[i], (float)p_pop_curve->data_y[i]});
         }
         SDL_RenderDrawLinesF(renderer, points.data(), (int)points.size());
@@ -269,21 +286,31 @@ private:
         SDL_Surface * surf = TTF_RenderText_Blended(font, ss.str().c_str(), {50, 50, 50});
         if (!surf) return;
         SDL_Texture * txt = SDL_CreateTextureFromSurface(renderer, surf);
-        SDL_Rect dst = {(int)(WIDTH - surf->w - 10), 5, surf->w, surf->h};
+        SDL_Rect dst = {(int)(cfg.window_width - surf->w - 10), 5, surf->w, surf->h};
         SDL_RenderCopy(renderer, txt, nullptr, &dst);
         SDL_DestroyTexture(txt);
         SDL_FreeSurface(surf);
     }
 
+    // ---- Cleanup helper for error paths ----
+
+    void cleanup_sdl(){
+        if (font) { TTF_CloseFont(font); font = nullptr; }
+        if (renderer) { SDL_DestroyRenderer(renderer); renderer = nullptr; }
+        if (window) { SDL_DestroyWindow(window); window = nullptr; }
+        TTF_Quit();
+        SDL_Quit();
+    }
+
 
 public:
-    int width = WIDTH;
-    int height = HEIGHT;
+    int width = cfg.window_width;
+    int height = cfg.window_height;
 
     Viewer(Colony * pp_colony){
         p_colony = pp_colony;
-        color_map_arr[0] = RED_SPORE;
-        color_map_arr[1] = BLUE_SPORE;
+        color_map_arr[0] = cfg.color_spore_male;
+        color_map_arr[1] = cfg.color_spore_female;
 
         determine_base_tile_loc();
         initialize_curve_panel();
@@ -302,6 +329,7 @@ public:
         }
         if (TTF_Init() < 0) {
             std::cerr << "TTF_Init failed: " << TTF_GetError() << std::endl;
+            cleanup_sdl();
             return EXIT_FAILURE;
         }
 
@@ -309,17 +337,19 @@ public:
         window = SDL_CreateWindow(
             "Chicken Window",
             SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-            WIDTH, HEIGHT,
+            cfg.window_width, cfg.window_height,
             SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
         );
         if (!window) {
             std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << std::endl;
+            cleanup_sdl();
             return EXIT_FAILURE;
         }
 
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
         if (!renderer) {
             std::cerr << "SDL_CreateRenderer failed: " << SDL_GetError() << std::endl;
+            cleanup_sdl();
             return EXIT_FAILURE;
         }
 
@@ -327,6 +357,7 @@ public:
         font = TTF_OpenFont("Arial.ttf", 20);
         if (!font) {
             std::cerr << "TTF_OpenFont failed: " << TTF_GetError() << std::endl;
+            cleanup_sdl();
             return EXIT_FAILURE;
         }
 
@@ -337,7 +368,7 @@ public:
 
         // Message text surface (left pane)
         std::string msg_str = "Chicken simulator\n[C] Step | [Space] Auto | [A] Add spore | "
-            + std::to_string(SIM_TICKS_PER_SEC) + " sim ticks/sec";
+            + std::to_string(cfg.get_sim_ticks_per_sec()) + " sim ticks/sec";
         SDL_Surface * msg_surf = TTF_RenderText_Blended(font, msg_str.c_str(), {50, 50, 50});
         SDL_Texture * msg_txt = SDL_CreateTextureFromSurface(renderer, msg_surf);
 
@@ -354,9 +385,9 @@ public:
                 sim_accumulator_ms += elapsed_ms;
                 // Fire as many sim ticks as have accumulated
                 int catch_up_count = 0;
-                while (sim_accumulator_ms >= SIM_TICK_MS){
+                while (sim_accumulator_ms >= cfg.sim_tick_ms){
                     p_colony->step_colony();
-                    sim_accumulator_ms -= SIM_TICK_MS;
+                    sim_accumulator_ms -= cfg.sim_tick_ms;
                     if (++catch_up_count >= 10) break;  // Prevent spiral of death
                 }
             }
@@ -392,7 +423,7 @@ public:
             }
 
             // Clear screen
-            SDL_SetRenderDrawColor(renderer, BG_COLOR.r, BG_COLOR.g, BG_COLOR.b, 255);
+            SDL_SetRenderDrawColor(renderer, cfg.color_bg.r, cfg.color_bg.g, cfg.color_bg.b, 255);
             SDL_RenderClear(renderer);
 
             // Draw scene layers (order matters for isometric depth)
@@ -416,7 +447,7 @@ public:
             {
                 Uint64 now = SDL_GetPerformanceCounter();
                 double frame_ms = (double)(now - last_perf_tick) / perf_freq * 1000.0;
-                double instant_fps = frame_ms > 0 ? 1000.0 / frame_ms : TARGET_FPS;
+                double instant_fps = frame_ms > 0 ? 1000.0 / frame_ms : cfg.target_fps;
                 if (fps_smooth == 0.0) {
                     fps_smooth = instant_fps;
                 } else {
@@ -443,11 +474,7 @@ public:
         // Cleanup
         SDL_DestroyTexture(msg_txt);
         SDL_FreeSurface(msg_surf);
-        TTF_CloseFont(font);
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        TTF_Quit();
-        SDL_Quit();
+        cleanup_sdl();
 
         return 0;
     };
