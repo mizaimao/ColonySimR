@@ -1,0 +1,71 @@
+# ColonySimR Configuration
+# Edit these values and restart the game to see changes.
+
+[general]
+master_seed = 720          # Random seed for reproducibility
+initial_spore_count = 50   # Starting population
+
+[viewer]
+target_fps = 30            # Render frames per second
+width = 1280               # Window width in pixels
+height = 800               # Window height in pixels
+show_gridlines = true      # Show tile grid lines
+show_spore_outline = false # Show outline around each spore
+
+[simulation]
+sim_tick_ms = 100          # Milliseconds per simulation tick (default: 10 ticks/sec)
+
+[viewer.panes]
+left_pane_width = 300      # Width of the left info pane
+central_padding_x = 100    # Horizontal padding around central view
+central_padding_y = 100    # Vertical padding around central view
+lower_pane_height = 200    # Height of the bottom UI area
+
+[viewer.curve]
+padding_pct = 5.0          # Horizontal padding of population curve pane (%)
+height_pct = 20.0          # Height of population curve pane (%)
+timepoints = 50            # Number of data points shown on the curve
+
+[colors]
+background = { r = 103, g = 193, b = 202 }
+ground =     { r = 141, g = 191, b = 57 }
+underground = { r = 155, g = 118, b = 83 }
+grid =       { r = 150, g = 150, b = 150 }
+
+[colors.spore]
+male =           { r = 250, g = 95,  b = 95 }   # Red spores (sex = 0)
+female =         { r = 66,  g = 158, b = 245 }  # Blue spores (sex = 1)
+outline =        { r = 120, g = 120, b = 120 }
+selected =       { r = 255, g = 255, b = 255 }
+left_modifier =  { r = 20,  g = 20,  b = 20 }   # Shading on left face
+right_modifier = { r = 20,  g = 20,  b = 20 }   # Shading on right face
+
+[colors.underground]
+left_modifier = { r = 20, g = 20, b = 20 }
+right_modifier = { r = 20, g = 20, b = 20 }
+
+[spores]
+height_ratio = 0.3         # Spore visual height as ratio of tile height
+underground_height_ratio = 0.05  # Underground depth as ratio of view height
+age_cap = -1               # Kill spores older than this (-1 = disabled)
+mood_recover_per_turn = 1.0   # Mood recovered each tick
+health_recover_per_turn = 1.0 # Health recovered each tick
+
+[spores.reproduction]
+event_pct = 10             # Chance of reproduction event when two spores meet (%)
+min_age = 0                # Minimum age to reproduce
+min_health = 90            # Minimum health required
+min_mood = 80              # Minimum mood required
+conceive_rate = 50         # Chance of creating a new spore if conditions met (%)
+
+[spores.fight]
+event_pct = 1              # Chance of fight event when two males meet (%)
+max_damage = 10            # Max health damage per side in a non-fatal fight
+fatal_pct = 10             # Chance that a fight is instantly fatal (%)
+
+[spores.chat]
+event_pct = 89             # Chance of chat event (default interaction) (%)
+happy_pct = 40             # Chance of a happy conversation (%)
+neutral_pct = 30           # Chance of a neutral conversation (%)
+negative_pct = 30          # Chance of a negative conversation (%)
+mood_impact_max = 10       # Max mood change from a single chat
