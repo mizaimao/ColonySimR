@@ -1,2 +1,15 @@
+CXX = clang++
+CXXFLAGS = -Wall -std=c++20 -fcolor-diagnostics -g
+SDL_CFLAGS = $(shell sdl2-config --cflags)
+SDL_LIBS = $(shell sdl2-config --libs) -lSDL2_ttf
+
 all:
-	clang++ -Wall -std=c++20 -fcolor-diagnostics -fansi-escape-codes -g main.cpp -I . -I src/include -L src/lib -o main -l sfml-graphics -l sfml-window -l sfml-system -l sfml-audio -v
+	$(CXX) $(CXXFLAGS) $(SDL_CFLAGS) main.cpp -I . -o main $(SDL_LIBS)
+
+run: all
+	./main
+
+clean:
+	rm -f main
+
+.PHONY: all run clean

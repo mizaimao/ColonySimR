@@ -32,3 +32,9 @@
 *.app
 
 .DS_Store
+
+# Editor/IDE config
+.vscode/
+
+# macOS Debug Symbols
+*.dSYM/
