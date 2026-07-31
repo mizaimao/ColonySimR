@@ -1,6 +1,5 @@
 #pragma once
 #include <deque>
-#include "config.h"
 
 class StatCurve{
 private:

@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <stdexcept>
+#include <iostream>
 #include "src/deps/toml11/toml.hpp"
 #include "config.h"  // For Color struct and compile-time constants
 
@@ -99,8 +100,8 @@ public:
     // --- Load from TOML file ---
     bool load(const std::string &path = "config.toml") {
         try {
-            auto data = toml::parse_file(path);
-            if (!data) return false;
+            auto data = toml::parse(path);
+
 
             // General
             if (data.contains("general")) {
@@ -170,10 +171,10 @@ public:
             // Spores
             if (data.contains("spores")) {
                 auto &sp = data.at("spores");
-                spore_height_ratio         = gtry<double>(sp, "height_ratio", spore_height_ratio);
-                underground_height_ratio   = gtry<double>(sp, "underground_height_ratio", underground_height_ratio);
-                spore_age_cap              = gtry<int>(sp, "age_cap", spore_age_cap);
-                spore_mood_recover_per_turn  = gtry<double>(sp, "mood_recover_per_turn", spore_mood_recover_per_turn);
+                spore_height_ratio          = gtry<double>(sp, "height_ratio", spore_height_ratio);
+                underground_height_ratio    = gtry<double>(sp, "underground_height_ratio", underground_height_ratio);
+                spore_age_cap               = gtry<int>(sp, "age_cap", spore_age_cap);
+                spore_mood_recover_per_turn = gtry<double>(sp, "mood_recover_per_turn", spore_mood_recover_per_turn);
                 spore_health_recover_per_turn = gtry<double>(sp, "health_recover_per_turn", spore_health_recover_per_turn);
 
                 if (sp.contains("reproduction")) {
@@ -213,23 +214,23 @@ public:
 private:
     // Helper: get a value from TOML table, falling back to default if missing
     template<typename T>
-    T gtry(const toml::table &tbl, const std::string &key, T default_val) {
+    T gtry(const auto &tbl, const std::string &key, T default_val) {
         try {
-            return tbl.at(key).as<T>().value;
+            return toml::get<T>(tbl.at(key));
         } catch (...) {
             return default_val;
         }
     }
 
     // Helper: load a color {r, g, b} or {r, g, b, a} from TOML table
-    Color load_color(const toml::table &tbl, const std::string &key, Color fallback) {
+    Color load_color(const auto &tbl, const std::string &key, Color fallback) {
         try {
-            auto &ct = tbl.at(key).as<table>().value;
-            uint8_t r = ct.at("r").as<int32_t>().value;
-            uint8_t g = ct.at("g").as<int32_t>().value;
-            uint8_t b = ct.at("b").as<int32_t>().value;
+            auto &ct = tbl.at(key);
+            uint8_t r = static_cast<uint8_t>(toml::get<int32_t>(ct.at("r")));
+            uint8_t g = static_cast<uint8_t>(toml::get<int32_t>(ct.at("g")));
+            uint8_t b = static_cast<uint8_t>(toml::get<int32_t>(ct.at("b")));
             uint8_t a = 255;
-            try { a = ct.at("a").as<int32_t>().value; } catch (...) {}
+            try { a = static_cast<uint8_t>(toml::get<int32_t>(ct.at("a"))); } catch (...) {}
             return Color(r, g, b, a);
         } catch (...) {
             return fallback;
