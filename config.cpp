@@ -1,12 +1,18 @@
 #pragma once
 #include <string>
+#include <set>
 #include <stdexcept>
 #include <iostream>
+#include <type_traits>
 #include "src/deps/toml11/toml.hpp"
 #include "config.h"  // For Color struct and compile-time constants
 
 // Runtime configuration loaded from config.toml.
 // Accessed globally via `cfg` after calling cfg.load().
+//
+// Every field has a usable default, so a missing or unparseable config.toml is
+// a warning rather than a fatal error. Keys that are misspelled or hold the
+// wrong type are reported on stderr instead of being silently dropped.
 class Config {
 public:
     // --- General ---
@@ -22,7 +28,7 @@ public:
 
     // --- Simulation ---
     int sim_tick_ms = 100;
-    int get_sim_ticks_per_sec() const { return 1000 / sim_tick_ms; }
+    int get_sim_ticks_per_sec() const { return sim_tick_ms > 0 ? 1000 / sim_tick_ms : 0; }
 
     // --- Viewer panes ---
     int left_pane_width = 300;
@@ -97,146 +103,224 @@ public:
     int chat_negative_pct = 30;
     int chat_mood_impact_max = 10;
 
-    // --- Load from TOML file ---
+    /**
+     * Load config.toml over the defaults.
+     *
+     * Returns true if the file was parsed and applied, false if it could not be
+     * read and the built-in defaults are in effect. Either way the returned
+     * Config is usable -- the caller does not have to treat false as fatal.
+     */
     bool load(const std::string &path = "config.toml") {
+        toml::value data;
         try {
-            auto data = toml::parse(path);
-
-
-            // General
-            if (data.contains("general")) {
-                auto &g = data.at("general");
-                master_seed         = gtry<int>(g, "master_seed", master_seed);
-                initial_spore_count = gtry<int>(g, "initial_spore_count", initial_spore_count);
-            }
-
-            // Viewer
-            if (data.contains("viewer")) {
-                auto &v = data.at("viewer");
-                target_fps         = gtry<int>(v, "target_fps", target_fps);
-                window_width       = gtry<int>(v, "width", window_width);
-                window_height      = gtry<int>(v, "height", window_height);
-                show_gridlines     = gtry<bool>(v, "show_gridlines", show_gridlines);
-                show_spore_outline = gtry<bool>(v, "show_spore_outline", show_spore_outline);
-            }
-
-            // Simulation
-            if (data.contains("simulation")) {
-                auto &s = data.at("simulation");
-                sim_tick_ms = gtry<int>(s, "sim_tick_ms", sim_tick_ms);
-            }
-
-            // Viewer panes
-            if (data.contains("viewer") && data.at("viewer").contains("panes")) {
-                auto &p = data.at("viewer").at("panes");
-                left_pane_width   = gtry<int>(p, "left_pane_width", left_pane_width);
-                central_padding_x = gtry<int>(p, "central_padding_x", central_padding_x);
-                central_padding_y = gtry<int>(p, "central_padding_y", central_padding_y);
-                lower_pane_height = gtry<int>(p, "lower_pane_height", lower_pane_height);
-            }
-
-            // Viewer curve
-            if (data.contains("viewer") && data.at("viewer").contains("curve")) {
-                auto &c = data.at("viewer").at("curve");
-                pop_curve_padding_pct = gtry<double>(c, "padding_pct", pop_curve_padding_pct);
-                pop_curve_height_pct  = gtry<double>(c, "height_pct", pop_curve_height_pct);
-                pop_curve_timepoints  = gtry<int>(c, "timepoints", pop_curve_timepoints);
-            }
-
-            // Colors
-            if (data.contains("colors")) {
-                auto &col = data.at("colors");
-                color_bg            = load_color(col, "background", color_bg);
-                color_ground        = load_color(col, "ground", color_ground);
-                color_underground   = load_color(col, "underground_color", color_underground);
-                color_grid          = load_color(col, "grid", color_grid);
-
-                if (col.contains("spore")) {
-                    auto &s = col.at("spore");
-                    color_spore_male       = load_color(s, "male", color_spore_male);
-                    color_spore_female     = load_color(s, "female", color_spore_female);
-                    color_spore_outline    = load_color(s, "outline", color_spore_outline);
-                    color_spore_selected   = load_color(s, "selected", color_spore_selected);
-                    color_spore_left_mod   = load_color(s, "left_modifier", color_spore_left_mod);
-                    color_spore_right_mod  = load_color(s, "right_modifier", color_spore_right_mod);
-                }
-
-                if (col.contains("underground")) {
-                    auto &u = col.at("underground");
-                    color_underground_left_mod  = load_color(u, "left_modifier", color_underground_left_mod);
-                    color_underground_right_mod = load_color(u, "right_modifier", color_underground_right_mod);
-                }
-            }
-
-            // Spores
-            if (data.contains("spores")) {
-                auto &sp = data.at("spores");
-                spore_height_ratio          = gtry<double>(sp, "height_ratio", spore_height_ratio);
-                underground_height_ratio    = gtry<double>(sp, "underground_height_ratio", underground_height_ratio);
-                spore_age_cap               = gtry<int>(sp, "age_cap", spore_age_cap);
-                spore_mood_recover_per_turn = gtry<double>(sp, "mood_recover_per_turn", spore_mood_recover_per_turn);
-                spore_health_recover_per_turn = gtry<double>(sp, "health_recover_per_turn", spore_health_recover_per_turn);
-
-                if (sp.contains("reproduction")) {
-                    auto &r = sp.at("reproduction");
-                    repro_event_pct      = gtry<int>(r, "event_pct", repro_event_pct);
-                    repro_min_age        = gtry<int>(r, "min_age", repro_min_age);
-                    repro_min_health     = gtry<int>(r, "min_health", repro_min_health);
-                    repro_min_mood       = gtry<int>(r, "min_mood", repro_min_mood);
-                    repro_conceive_rate  = gtry<int>(r, "conceive_rate", repro_conceive_rate);
-                }
-
-                if (sp.contains("fight")) {
-                    auto &f = sp.at("fight");
-                    fight_event_pct   = gtry<int>(f, "event_pct", fight_event_pct);
-                    fight_max_damage  = gtry<int>(f, "max_damage", fight_max_damage);
-                    fight_fatal_pct   = gtry<int>(f, "fatal_pct", fight_fatal_pct);
-                }
-
-                if (sp.contains("chat")) {
-                    auto &ch = sp.at("chat");
-                    chat_event_pct       = gtry<int>(ch, "event_pct", chat_event_pct);
-                    chat_happy_pct       = gtry<int>(ch, "happy_pct", chat_happy_pct);
-                    chat_neutral_pct     = gtry<int>(ch, "neutral_pct", chat_neutral_pct);
-                    chat_negative_pct    = gtry<int>(ch, "negative_pct", chat_negative_pct);
-                    chat_mood_impact_max = gtry<int>(ch, "mood_impact_max", chat_mood_impact_max);
-                }
-            }
-
-            return true;
+            data = toml::parse(path);
         } catch (const std::exception &e) {
-            std::cerr << "Failed to load config.toml: " << e.what() << std::endl;
-            std::cerr << "Using default values." << std::endl;
+            std::cerr << "config: could not read " << path << ": " << e.what() << "\n"
+                      << "config: continuing with built-in defaults." << std::endl;
             return false;
         }
+
+        seen_.clear();
+        consumed_.clear();
+        tables_.clear();
+
+        Section root{&data, ""};
+
+        if (Section g = sub(root, "general")) {
+            master_seed         = get(g, "master_seed", master_seed);
+            initial_spore_count = get(g, "initial_spore_count", initial_spore_count);
+        }
+
+        Section viewer = sub(root, "viewer");
+        if (viewer) {
+            target_fps         = get(viewer, "target_fps", target_fps);
+            window_width       = get(viewer, "width", window_width);
+            window_height      = get(viewer, "height", window_height);
+            show_gridlines     = get(viewer, "show_gridlines", show_gridlines);
+            show_spore_outline = get(viewer, "show_spore_outline", show_spore_outline);
+
+            if (Section p = sub(viewer, "panes")) {
+                left_pane_width   = get(p, "left_pane_width", left_pane_width);
+                central_padding_x = get(p, "central_padding_x", central_padding_x);
+                central_padding_y = get(p, "central_padding_y", central_padding_y);
+                lower_pane_height = get(p, "lower_pane_height", lower_pane_height);
+            }
+
+            if (Section c = sub(viewer, "curve")) {
+                pop_curve_padding_pct = get(c, "padding_pct", pop_curve_padding_pct);
+                pop_curve_height_pct  = get(c, "height_pct", pop_curve_height_pct);
+                pop_curve_timepoints  = get(c, "timepoints", pop_curve_timepoints);
+            }
+        }
+
+        if (Section s = sub(root, "simulation")) {
+            sim_tick_ms = get(s, "sim_tick_ms", sim_tick_ms);
+        }
+
+        Section colors = sub(root, "colors");
+        if (colors) {
+            color_bg          = color(colors, "background", color_bg);
+            color_ground      = color(colors, "ground", color_ground);
+            color_underground = color(colors, "underground_color", color_underground);
+            color_grid        = color(colors, "grid", color_grid);
+
+            if (Section s = sub(colors, "spore")) {
+                color_spore_male      = color(s, "male", color_spore_male);
+                color_spore_female    = color(s, "female", color_spore_female);
+                color_spore_outline   = color(s, "outline", color_spore_outline);
+                color_spore_selected  = color(s, "selected", color_spore_selected);
+                color_spore_left_mod  = color(s, "left_modifier", color_spore_left_mod);
+                color_spore_right_mod = color(s, "right_modifier", color_spore_right_mod);
+            }
+
+            if (Section u = sub(colors, "underground")) {
+                color_underground_left_mod  = color(u, "left_modifier", color_underground_left_mod);
+                color_underground_right_mod = color(u, "right_modifier", color_underground_right_mod);
+            }
+        }
+
+        Section spores = sub(root, "spores");
+        if (spores) {
+            spore_height_ratio            = get(spores, "height_ratio", spore_height_ratio);
+            underground_height_ratio      = get(spores, "underground_height_ratio", underground_height_ratio);
+            spore_age_cap                 = get(spores, "age_cap", spore_age_cap);
+            spore_mood_recover_per_turn   = get(spores, "mood_recover_per_turn", spore_mood_recover_per_turn);
+            spore_health_recover_per_turn = get(spores, "health_recover_per_turn", spore_health_recover_per_turn);
+
+            if (Section r = sub(spores, "reproduction")) {
+                repro_event_pct     = get(r, "event_pct", repro_event_pct);
+                repro_min_age       = get(r, "min_age", repro_min_age);
+                repro_min_health    = get(r, "min_health", repro_min_health);
+                repro_min_mood      = get(r, "min_mood", repro_min_mood);
+                repro_conceive_rate = get(r, "conceive_rate", repro_conceive_rate);
+            }
+
+            if (Section f = sub(spores, "fight")) {
+                fight_event_pct  = get(f, "event_pct", fight_event_pct);
+                fight_max_damage = get(f, "max_damage", fight_max_damage);
+                fight_fatal_pct  = get(f, "fatal_pct", fight_fatal_pct);
+            }
+
+            if (Section ch = sub(spores, "chat")) {
+                chat_event_pct       = get(ch, "event_pct", chat_event_pct);
+                chat_happy_pct       = get(ch, "happy_pct", chat_happy_pct);
+                chat_neutral_pct     = get(ch, "neutral_pct", chat_neutral_pct);
+                chat_negative_pct    = get(ch, "negative_pct", chat_negative_pct);
+                chat_mood_impact_max = get(ch, "mood_impact_max", chat_mood_impact_max);
+            }
+        }
+
+        // Anything in the file we never looked at is almost certainly a typo.
+        report_unknown(data, "");
+        return true;
     }
 
 private:
-    // Helper: get a value from TOML table, falling back to default if missing
+    // A table in the parsed document, paired with its dotted path so warnings
+    // can name the offending key exactly as it appears in config.toml.
+    struct Section {
+        const toml::value *v = nullptr;
+        std::string path;
+        explicit operator bool() const { return v != nullptr; }
+    };
+
+    std::set<std::string> seen_;      // scalar keys this loader knows about
+    std::set<std::string> consumed_;  // subtrees handled wholesale (colors)
+    std::set<std::string> tables_;    // subtables this loader descends into
+
+    static std::string join(const std::string &a, const std::string &b) {
+        return a.empty() ? b : a + "." + b;
+    }
+
+    void warn(const std::string &key, const std::string &msg) {
+        std::cerr << "config: ignoring '" << key << "': " << msg << std::endl;
+    }
+
+    // Descend into a subtable, registering it as known even when absent.
+    Section sub(const Section &parent, const std::string &key) {
+        const std::string full = join(parent.path, key);
+        tables_.insert(full);
+        if (!parent.v || !parent.v->contains(key)) return {};
+        const toml::value &v = parent.v->at(key);
+        if (!v.is_table()) {
+            warn(full, "expected a [table]");
+            return {};
+        }
+        return {&v, full};
+    }
+
+    // Read one scalar, falling back to the default and warning on a type error.
     template<typename T>
-    T gtry(const auto &tbl, const std::string &key, T default_val) {
+    T get(const Section &sec, const std::string &key, T default_val) {
+        const std::string full = join(sec.path, key);
+        seen_.insert(full);
+        if (!sec.v || !sec.v->contains(key)) return default_val;
+        const toml::value &v = sec.v->at(key);
         try {
-            return toml::get<T>(tbl.at(key));
-        } catch (...) {
+            if constexpr (std::is_floating_point_v<T>) {
+                // TOML separates 5 from 5.0; for a ratio or a percentage nobody
+                // means anything different by the two, so take either.
+                if (v.is_integer()) return static_cast<T>(v.as_integer());
+                return static_cast<T>(toml::get<double>(v));
+            } else {
+                return toml::get<T>(v);
+            }
+        } catch (const std::exception &e) {
+            warn(full, e.what());
             return default_val;
         }
     }
 
-    // Helper: load a color {r, g, b} or {r, g, b, a} from TOML table
-    Color load_color(const auto &tbl, const std::string &key, Color fallback) {
+    // Read a color table -- {r, g, b} or {r, g, b, a}.
+    Color color(const Section &sec, const std::string &key, Color fallback) {
+        const std::string full = join(sec.path, key);
+        consumed_.insert(full);  // r/g/b/a are handled here, don't flag them below
+        if (!sec.v || !sec.v->contains(key)) return fallback;
+        const toml::value &ct = sec.v->at(key);
         try {
-            auto &ct = tbl.at(key);
-            uint8_t r = static_cast<uint8_t>(toml::get<int32_t>(ct.at("r")));
-            uint8_t g = static_cast<uint8_t>(toml::get<int32_t>(ct.at("g")));
-            uint8_t b = static_cast<uint8_t>(toml::get<int32_t>(ct.at("b")));
-            uint8_t a = 255;
-            try { a = static_cast<uint8_t>(toml::get<int32_t>(ct.at("a"))); } catch (...) {}
-            return Color(r, g, b, a);
-        } catch (...) {
+            if (!ct.is_table()) {
+                warn(full, "expected { r = .., g = .., b = .. }");
+                return fallback;
+            }
+            for (const auto &kv : ct.as_table()) {
+                if (kv.first != "r" && kv.first != "g" && kv.first != "b" && kv.first != "a") {
+                    warn(join(full, kv.first), "unknown color channel");
+                }
+            }
+            const int r = toml::find<int>(ct, "r");
+            const int g = toml::find<int>(ct, "g");
+            const int b = toml::find<int>(ct, "b");
+            const int a = ct.contains("a") ? toml::find<int>(ct, "a") : 255;
+            for (const int channel : {r, g, b, a}) {
+                if (channel < 0 || channel > 255) {
+                    warn(full, "color channels must be between 0 and 255");
+                    return fallback;
+                }
+            }
+            return Color((uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a);
+        } catch (const std::exception &e) {
+            warn(full, e.what());
             return fallback;
+        }
+    }
+
+    // Walk the parsed document and report anything the loader never read.
+    void report_unknown(const toml::value &v, const std::string &path) {
+        if (!v.is_table()) return;
+        for (const auto &kv : v.as_table()) {
+            const std::string full = join(path, kv.first);
+            if (consumed_.count(full) || seen_.count(full)) continue;
+            if (kv.second.is_table()) {
+                if (tables_.count(full)) report_unknown(kv.second, full);
+                else warn(full, "unknown section");
+            } else {
+                warn(full, "unknown key");
+            }
         }
     }
 };
 
 // Global config instance. Call cfg.load() in main() before using anything else.
-Config cfg;
+// `inline` so that including this file from more than one translation unit does
+// not produce duplicate symbols.
+inline Config cfg;

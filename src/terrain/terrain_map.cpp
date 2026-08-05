@@ -17,6 +17,5 @@ public:
         height = i_height;
         
         bitmap.resize(height, vector<int>(width, 0));
-        ;
     };
 };

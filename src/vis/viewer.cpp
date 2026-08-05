@@ -1,4 +1,6 @@
 #pragma once
+#include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <iomanip>
@@ -94,9 +96,10 @@ private:
         mapped_y = (x + y) * tile_height / 2 + base_tile_y;
     }
 
-    void convert_to_isometric_coor(int x, int y, int & mapped_x, int & mapped_y){
-        float _inter_a = ((float)y - (float)base_tile_y) / (float)tile_height;
-        float _inter_b = ((float)x - (float)base_tile_x) / (float)tile_width;
+    // Inverse of get_tile_loc: screen position back to a colony grid coordinate.
+    void convert_to_isometric_coor(float x, float y, int & mapped_x, int & mapped_y){
+        float _inter_a = (y - base_tile_y) / (float)tile_height;
+        float _inter_b = (x - base_tile_x) / (float)tile_width;
         mapped_x = (int)round(_inter_a + _inter_b);
         mapped_y = (int)round(_inter_a - _inter_b);
     }
@@ -220,15 +223,17 @@ private:
     }
 
     void draw_spore_outline_on_mouse(){
-        int mx, my;
-        SDL_GetMouseState(&mx, &my);
+        int window_mx, window_my;
+        SDL_GetMouseState(&window_mx, &window_my);
+        // The renderer has a fixed logical size, so window pixels have to be
+        // mapped back into logical space before the isometric inverse applies.
+        float mx, my;
+        SDL_RenderWindowToLogical(renderer, window_mx, window_my, &mx, &my);
         // A spore at grid (x,y) visually spans 4 diamond corners. The reverse
         // transform maps each corner to a different tile, so we check all 4
         // contributing tiles and highlight the first one that has spores.
-        float _ia = ((float)my - (float)base_tile_y) / (float)tile_height;
-        float _ib = ((float)mx - (float)base_tile_x) / (float)tile_width;
-        int cx = (int)round(_ia + _ib);
-        int cy = (int)round(_ia - _ib);
+        int cx, cy;
+        convert_to_isometric_coor(mx, my, cx, cy);
         // Check the 4 tiles that share this diamond corner.
         int neighbors[4][2] = {{cx, cy}, {cx-1, cy}, {cx, cy-1}, {cx-1, cy-1}};
         for (int i = 0; i < 4; i++){
@@ -252,16 +257,22 @@ private:
         p_pop_curve = new StatCurve(curve_pos_x, curve_pos_y, curve_width, curve_height, cfg.pop_curve_timepoints);
     }
 
+    // Sample the population. Called once per simulation tick rather than once
+    // per frame, so the curve's x-axis measures sim time and not frame rate,
+    // and so it stops advancing while the simulation is paused.
+    void record_population(){
+        p_pop_curve->add_point(p_colony->spore_man->current_population);
+    }
+
     void draw_population_curve(){
         // Background pane
         draw_rect_filled(renderer, Color(255, 255, 255, 100), curve_pos_x, curve_pos_y, curve_width, curve_height);
 
-        p_pop_curve->add_point(p_colony->spore_man->current_population);
-
         // Draw the curve line
         SDL_SetRenderDrawColor(renderer, 240, 240, 240, 255);
         std::vector<SDL_FPoint> points;
-        for (int i = 0; i < cfg.pop_curve_timepoints; i++){
+        const size_t n = std::min(p_pop_curve->data_x.size(), p_pop_curve->data_y.size());
+        for (size_t i = 0; i < n; i++){
             points.push_back({(float)p_pop_curve->data_x[i], (float)p_pop_curve->data_y[i]});
         }
         SDL_RenderDrawLinesF(renderer, points.data(), (int)points.size());
@@ -353,6 +364,11 @@ public:
             return EXIT_FAILURE;
         }
 
+        // The pane layout is computed once from the configured window size, so
+        // pin a logical size and let SDL letterbox it. Without this, resizing
+        // the window leaves the curve pane and FPS counter at stale positions.
+        SDL_RenderSetLogicalSize(renderer, cfg.window_width, cfg.window_height);
+
         // Load font
         font = TTF_OpenFont("Arial.ttf", 20);
         if (!font) {
@@ -370,7 +386,22 @@ public:
         std::string msg_str = "Chicken simulator\n[C] Step | [Space] Auto | [A] Add spore | "
             + std::to_string(cfg.get_sim_ticks_per_sec()) + " sim ticks/sec";
         SDL_Surface * msg_surf = TTF_RenderText_Blended(font, msg_str.c_str(), {50, 50, 50});
+        if (!msg_surf) {
+            std::cerr << "TTF_RenderText_Blended failed: " << TTF_GetError() << std::endl;
+            cleanup_sdl();
+            return EXIT_FAILURE;
+        }
         SDL_Texture * msg_txt = SDL_CreateTextureFromSurface(renderer, msg_surf);
+        if (!msg_txt) {
+            std::cerr << "SDL_CreateTextureFromSurface failed: " << SDL_GetError() << std::endl;
+            SDL_FreeSurface(msg_surf);
+            cleanup_sdl();
+            return EXIT_FAILURE;
+        }
+
+        // Seed the curve with the starting population so it has a sensible peak
+        // to scale against before the first tick.
+        record_population();
 
         // Main loop
         bool running = true;
@@ -387,6 +418,7 @@ public:
                 int catch_up_count = 0;
                 while (sim_accumulator_ms >= cfg.sim_tick_ms){
                     p_colony->step_colony();
+                    record_population();
                     sim_accumulator_ms -= cfg.sim_tick_ms;
                     if (++catch_up_count >= 10) break;  // Prevent spiral of death
                 }
@@ -406,6 +438,7 @@ public:
                         switch (event.key.keysym.sym){
                             case SDLK_c:
                                 p_colony->step_colony();
+                                record_population();
                                 break;
                             case SDLK_SPACE:
                                 p_colony->is_realtime = !p_colony->is_realtime;

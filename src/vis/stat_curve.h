@@ -24,9 +24,9 @@ public:
     int prev_high = 0;
 
     // These two arrays stores X, Y coordinates for each point.
-    deque<int> data_x;
-    deque<int> data_y;
-    deque<int> pop_history;
+    std::deque<int> data_x;
+    std::deque<int> data_y;
+    std::deque<int> pop_history;
 
 
     StatCurve(int pos_xx, int pos_yy, int size_x, int size_y, int i_data_points){
@@ -50,37 +50,39 @@ public:
             data_x.push_back(
                 (int)(pos_x + x_offset + i * x_interval)
             );
-            data_y.push_back(0);
+            // Start on the baseline rather than at y=0, which would draw a flat
+            // line across the top of the pane until the first sample arrives.
+            data_y.push_back((int)calculate_height(0.f, 0.f));
             pop_history.push_back(0);
         }
     };
 
-    // Calculate height of a point.
-    float calculate_height(float current, float prev_high){
-        float relative_y = (float)drawable_height * current / prev_high;
+    // Calculate the screen height of a point, given the peak it is scaled against.
+    float calculate_height(float current, float peak){
+        if (peak <= 0.f){  // Nothing has been recorded yet -- sit on the baseline.
+            return pos_y + y_offset + drawable_height;
+        }
+        float relative_y = drawable_height * current / peak;
         return pos_y + y_offset + (drawable_height - (int)relative_y);
     }
-    
 
     // Add current population into array and recalculate xy if necessary.
     void add_point(int data){
-        // Remove the first elements. Leave X positions because they don't really change.
-        if (pop_history.size() == data_points){
+        // Drop the oldest sample. X positions are left alone; they never change.
+        pop_history.push_back(data);
+        while ((int)pop_history.size() > data_points){
             pop_history.pop_front();
-            data_y.pop_front();
-            pop_history.push_back(data);
         }
 
-        // Re-calculate height of each point.
+        // A new peak rescales every point, so just recompute the whole window.
+        // data_points is small (50 by default), this is not worth optimizing.
         if (data > prev_high){
             prev_high = data;
-            for (int i = 0; i < data_points - 1; i++){
-                data_y[i] = calculate_height(pop_history[i], prev_high);
-            }
         }
-        // Calculate only the newly added point.
-        data_y.push_back( calculate_height(data, prev_high) );
-
+        data_y.clear();
+        for (int i = 0; i < (int)pop_history.size(); i++){
+            data_y.push_back((int)calculate_height((float)pop_history[i], (float)prev_high));
+        }
     }
 
 };

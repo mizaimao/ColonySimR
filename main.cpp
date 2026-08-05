@@ -5,11 +5,9 @@
 
 int main(){
 
-    // Load configuration from config.toml
-    if (!cfg.load()){
-        std::cerr << "Failed to load config.toml. Exiting." << std::endl;
-        return 1;
-    }
+    // Load configuration from config.toml. A missing or unreadable file is not
+    // fatal -- cfg.load() reports it and leaves the built-in defaults in place.
+    cfg.load();
 
     // Check configuration validity.
     if (config_check()){
