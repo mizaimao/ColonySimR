@@ -29,7 +29,7 @@ timepoints = 50            # Number of data points shown on the curve
 [colors]
 background = { r = 103, g = 193, b = 202 }
 ground =     { r = 141, g = 191, b = 57 }
-underground = { r = 155, g = 118, b = 83 }
+underground_color = { r = 155, g = 118, b = 83 }
 grid =       { r = 150, g = 150, b = 150 }
 
 [colors.spore]
