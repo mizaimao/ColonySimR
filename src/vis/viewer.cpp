@@ -75,29 +75,15 @@ private:
     // ---- Isometric coordinate helpers ----
 
     int determine_base_tile_loc(){
-        int total_width = cfg.get_central_total_width();
-        int total_height = cfg.get_central_total_height();
-
-        int base_tile, other_tile;
-        if (min(total_width, total_height) == total_width){
-            base_tile = total_width;
-            other_tile = (int)(total_width / 2);
+        int tile_w_raw = cfg.get_central_total_width() / COLONY_WIDTH;
+        int tile_h_raw = cfg.get_central_total_height() / COLONY_HEIGHT;
+        if (min(tile_w_raw, tile_h_raw) == tile_w_raw){  // Bound by width.
+            tile_width = tile_w_raw;
+            tile_height = (int)(tile_width / 2);
         } else {
-            base_tile = total_height;
-            other_tile = (int)(base_tile * 2);
-        }
-        tile_width = other_tile;
-        tile_height = base_tile / 2;
-
-        // Recalculate: use the ratio approach (2:1 isometric)
-        if (min(total_width, total_height) == total_width){
-            tile_width = total_width;
-            tile_height = (int)(total_width / 2);
-        } else {
-            tile_height = total_height;
+            tile_height = tile_h_raw;
             tile_width = (int)(tile_height * 2);
         }
-
         base_tile_x = cfg.left_pane_width + (COLONY_WIDTH / 2) * tile_width;
         base_tile_y = cfg.central_padding_y;
         return 0;
@@ -236,9 +222,23 @@ private:
     void draw_spore_outline_on_mouse(){
         int mx, my;
         SDL_GetMouseState(&mx, &my);
-        int mapped_x, mapped_y;
-        convert_to_isometric_coor(mx, my, mapped_x, mapped_y);
-        draw_spore_outline(mapped_x, mapped_y, cfg.color_spore_selected);
+        // A spore at grid (x,y) visually spans 4 diamond corners. The reverse
+        // transform maps each corner to a different tile, so we check all 4
+        // contributing tiles and highlight the first one that has spores.
+        float _ia = ((float)my - (float)base_tile_y) / (float)tile_height;
+        float _ib = ((float)mx - (float)base_tile_x) / (float)tile_width;
+        int cx = (int)round(_ia + _ib);
+        int cy = (int)round(_ia - _ib);
+        // Check the 4 tiles that share this diamond corner.
+        int neighbors[4][2] = {{cx, cy}, {cx-1, cy}, {cx, cy-1}, {cx-1, cy-1}};
+        for (int i = 0; i < 4; i++){
+            if (neighbors[i][0] >= 0 && neighbors[i][0] < COLONY_WIDTH &&
+                neighbors[i][1] >= 0 && neighbors[i][1] < COLONY_HEIGHT &&
+                !p_colony->spore_man->spore_by_loc[neighbors[i][1]][neighbors[i][0]].empty()){
+                draw_spore_outline(neighbors[i][0], neighbors[i][1], cfg.color_spore_selected);
+                break;
+            }
+        }
     }
 
     // ---- Population curve ----
@@ -394,14 +394,13 @@ public:
 
             // Handle events
             SDL_Event event;
-            bool mouse_moved = false;
+
             while (SDL_PollEvent(&event)){
                 switch (event.type){
                     case SDL_QUIT:
                         running = false;
                         break;
                     case SDL_MOUSEMOTION:
-                        mouse_moved = true;
                         break;
                     case SDL_KEYDOWN:
                         switch (event.key.keysym.sym){
@@ -431,10 +430,8 @@ public:
             draw_grid_lines();
             draw_all_spores();
 
-            // Mouse hover outline (drawn on top of spores)
-            if (mouse_moved){
-                draw_spore_outline_on_mouse();
-            }
+            // Mouse hover outline (drawn every frame for smooth tracking)
+            draw_spore_outline_on_mouse();
 
             // UI elements
             draw_population_curve();

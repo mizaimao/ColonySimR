@@ -128,7 +128,7 @@ public:
 
             // Viewer panes
             if (data.contains("viewer") && data.at("viewer").contains("panes")) {
-                auto &p = data.at("viewer.panes");
+                auto &p = data.at("viewer").at("panes");
                 left_pane_width   = gtry<int>(p, "left_pane_width", left_pane_width);
                 central_padding_x = gtry<int>(p, "central_padding_x", central_padding_x);
                 central_padding_y = gtry<int>(p, "central_padding_y", central_padding_y);
@@ -137,7 +137,7 @@ public:
 
             // Viewer curve
             if (data.contains("viewer") && data.at("viewer").contains("curve")) {
-                auto &c = data.at("viewer.curve");
+                auto &c = data.at("viewer").at("curve");
                 pop_curve_padding_pct = gtry<double>(c, "padding_pct", pop_curve_padding_pct);
                 pop_curve_height_pct  = gtry<double>(c, "height_pct", pop_curve_height_pct);
                 pop_curve_timepoints  = gtry<int>(c, "timepoints", pop_curve_timepoints);
@@ -148,7 +148,7 @@ public:
                 auto &col = data.at("colors");
                 color_bg            = load_color(col, "background", color_bg);
                 color_ground        = load_color(col, "ground", color_ground);
-                color_underground   = load_color(col, "underground", color_underground);
+                color_underground   = load_color(col, "underground_color", color_underground);
                 color_grid          = load_color(col, "grid", color_grid);
 
                 if (col.contains("spore")) {
