@@ -25,14 +25,13 @@ public:
     bool moved = false;  // Indicates if this spore has moved (for drawing).
     //vector< array<int, 3> > route;
 
-    Spore(int i_sex, int i_spore_id, int i_loc_x, int i_loc_y, float f_health = 100.0f, int i_age = 0, int f_mood = 100.0f){
+    Spore(int i_sex, int i_spore_id, int i_loc_x, int i_loc_y, float f_health = 100.0f, int i_age = 0, float f_mood = 100.0f){
         sex = i_sex;
         spore_id = i_spore_id;
         age = i_age;
         loc_x = i_loc_x;
         loc_y = i_loc_y;
         health = f_health;
-        age = i_age;
         mood = f_mood;
     };
 };
@@ -258,11 +257,9 @@ public:
                 // Trigger spore interactions on that tile.
                 spore_interaction_on_the_same_tile(location_vector);
 
-                // Log their original location
-                int i = location_vector.size() - 1;
-                for (
-                    auto it = location_vector.end(); it != location_vector.begin(); it--, i--){
-                // for (Spore * p_spore : location_vector){
+                // Walk backwards so that erasing the current entry leaves the
+                // not-yet-visited ones at the same indices.
+                for (int i = (int)location_vector.size() - 1; i >= 0; i--){
                     Spore * p_spore = location_vector[i];
                     Spore & spore = * p_spore;
 
